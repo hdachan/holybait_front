@@ -28,9 +28,9 @@ class _LoginScreenState extends State<LoginScreen> {
       case AuthStatus.authenticated:
         context.go('/home');
       case AuthStatus.banned:
-        _showSnackBar('계정이 정지되었습니다.');
+        _showSnackBar('계정이 정지되었습니다. 고객센터에 문의해주세요.');
       case AuthStatus.deleted:
-        _showSnackBar('탈퇴한 계정입니다.');
+        _showDeletedDialog();
       case AuthStatus.error:
         _showSnackBar(auth.errorMessage ?? '로그인 실패. 다시 시도해주세요.');
       default:
@@ -41,6 +41,43 @@ class _LoginScreenState extends State<LoginScreen> {
   void _showSnackBar(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(msg)),
+    );
+  }
+
+  void _showDeletedDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        title: const Text('탈퇴한 계정'),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.person_off_outlined, size: 48, color: Colors.grey),
+            SizedBox(height: 16),
+            Text(
+              '이미 탈퇴한 계정입니다.',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 8),
+            Text(
+              '다른 Google 계정으로 로그인하거나\n새로 가입해주세요.',
+              style: TextStyle(color: Colors.grey, fontSize: 14),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('확인'),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
