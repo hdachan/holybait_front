@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import '../../../data/models/routine_model.dart';
 import '../../../data/models/workout_model.dart';
 import '../../../data/repositories/routine_repository.dart';
+import '../../currency/provider/currency_provider.dart';
 
 class WorkoutLogScreen extends StatefulWidget {
   // 단일 운동이면 exercises에 1개, 슈퍼세트면 N개
@@ -150,7 +152,12 @@ class _WorkoutLogScreenState extends State<WorkoutLogScreen>
         await _repository.saveWorkout(
             widget.exercises[i].id, _buildPayload(_allSets[i]));
       }
-      if (mounted) Navigator.pop(context);
+
+      // 운동 저장 후 재화 업데이트
+      if (mounted) {
+        context.read<CurrencyProvider>().load();
+        Navigator.pop(context);
+      }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
