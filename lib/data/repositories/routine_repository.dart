@@ -16,7 +16,6 @@ class RoutineRepository {
       int id, String name, List<int> exerciseIds) =>
       _remote.updateRoutine(id, name, exerciseIds);
 
-  // 편집 모드 전체 저장
   Future<RoutineModel> saveRoutineDetail(
       int routineId, List<Map<String, dynamic>> exercises) =>
       _remote.saveRoutineDetail(routineId, exercises);
@@ -30,10 +29,14 @@ class RoutineRepository {
   Future<ExerciseModel> createCustomExercise(String name, String target) =>
       _remote.createCustomExercise(name, target);
 
-  Future<void> saveWorkout(
-      int routineExerciseId, List<Map<String, dynamic>> sets) =>
+  // isSuperset, isSupersetFirst 제거
+  Future<WorkoutSaveResult> saveWorkout(
+      int routineExerciseId,
+      List<Map<String, dynamic>> sets,
+      ) =>
       _remote.saveWorkout(routineExerciseId, sets);
 
-  Future<List<WorkoutSetModel>> getRecentSets(int routineExerciseId) =>
+  // nullable RecentSetsResponse 반환 (기록 없으면 null)
+  Future<RecentSetsResponse?> getRecentSets(int routineExerciseId) =>
       _remote.getRecentSets(routineExerciseId);
 }

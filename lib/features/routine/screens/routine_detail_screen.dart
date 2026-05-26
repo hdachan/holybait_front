@@ -15,20 +15,30 @@ class RoutineDetailScreen extends StatefulWidget {
 class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
   final _repository = RoutineRepository();
   bool _isEditMode = false;
+  bool _isSaving = false;
   late List<_RowItem> _rows;
   final Set<int> _selecting = {};
-
-  // 편집 모드 진입 전 스냅샷 — 저장 없이 나가면 복구
   List<_RowItem>? _rowsSnapshot;
 
   @override
   void initState() {
     super.initState();
-    _initRows();
+    _initRows(widget.routine.exercises);
+    // 서버에서 최신 id 로 refresh (나갔다 들어와도 최신 id 유지)
+    _refreshFromServer();
   }
 
-  void _initRows() {
-    final exercises = widget.routine.exercises;
+  // 서버에서 최신 루틴 데이터 fetch → _rows 업데이트
+  Future<void> _refreshFromServer() async {
+    try {
+      final fresh = await _repository.getRoutine(widget.routine.id);
+      if (mounted) setState(() => _initRows(fresh.exercises));
+    } catch (_) {
+      // 실패해도 기존 데이터 그대로 사용
+    }
+  }
+
+  void _initRows(List<RoutineExerciseModel> exercises) {
     final rows = <_RowItem>[];
     final visited = <int>{};
 
@@ -64,6 +74,66 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
       }
     }
     return ids;
+  }
+
+  List<Map<String, dynamic>> _buildExercisesPayload() {
+    final exercises = <Map<String, dynamic>>[];
+    int order = 0;
+    for (final row in _rows) {
+      if (row is _SingleItem) {
+        exercises.add({
+          'exerciseId': row.exercise.exerciseId,
+          'orderIndex': order++,
+          'supersetGroup': null,
+        });
+      } else if (row is _SupersetItem) {
+        for (final ex in row.exercises) {
+          exercises.add({
+            'exerciseId': ex.exerciseId,
+            'orderIndex': order++,
+            'supersetGroup': row.groupId,
+          });
+        }
+      }
+    }
+    return exercises;
+  }
+
+  // + 버튼으로 운동 추가 → 즉시 저장 → 서버 응답으로 _rows 업데이트
+  Future<void> _addExercisesAndSave(List exercises) async {
+    setState(() => _isSaving = true);
+    try {
+      for (final ex in exercises) {
+        _rows.add(_SingleItem(
+          exercise: RoutineExerciseModel(
+            id: -DateTime.now().millisecondsSinceEpoch,
+            exerciseId: ex.id,
+            exerciseName: ex.name,
+            target: ex.target,
+            orderIndex: _rows.length,
+          ),
+        ));
+      }
+
+      final saved = await _repository.saveRoutineDetail(
+          widget.routine.id, _buildExercisesPayload());
+
+      if (mounted) setState(() => _initRows(saved.exercises));
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _rows.removeWhere((r) => r is _SingleItem && r.exercise.id < 0);
+        });
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: const Text('운동 추가에 실패했습니다.'),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
   }
 
   void _toggleSelect(int index) {
@@ -103,10 +173,8 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
     });
   }
 
-  // 삭제 + Undo 스낵바
   void _removeRow(int index) {
     final removed = _rows[index];
-
     setState(() {
       _rows.removeAt(index);
       final newSelecting = <int>{};
@@ -118,98 +186,66 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
     });
 
     ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          removed is _SingleItem
-              ? '\'${removed.exercise.exerciseName}\' 삭제됨'
-              : '슈퍼세트 삭제됨',
-        ),
-        action: SnackBarAction(
-          label: '되돌리기',
-          onPressed: () {
-            setState(() => _rows.insert(index, removed));
-          },
-        ),
-        duration: const Duration(seconds: 3),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(removed is _SingleItem
+          ? '\'${removed.exercise.exerciseName}\' 삭제됨'
+          : '슈퍼세트 삭제됨'),
+      action: SnackBarAction(
+        label: '되돌리기',
+        onPressed: () => setState(() => _rows.insert(index, removed)),
       ),
-    );
+      duration: const Duration(seconds: 3),
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+    ));
   }
 
+  // 편집 저장 → 서버 응답으로 _rows 업데이트 (새 id 반영)
   Future<void> _saveChanges() async {
+    setState(() => _isSaving = true);
     try {
-      final exercises = <Map<String, dynamic>>[];
-      int order = 0;
-
-      for (final row in _rows) {
-        if (row is _SingleItem) {
-          exercises.add({
-            'exerciseId': row.exercise.exerciseId,
-            'orderIndex': order++,
-            'supersetGroup': null,
-          });
-        } else if (row is _SupersetItem) {
-          for (final ex in row.exercises) {
-            exercises.add({
-              'exerciseId': ex.exerciseId,
-              'orderIndex': order++,
-              'supersetGroup': row.groupId,
-            });
-          }
-        }
-      }
-
-      await _repository.saveRoutineDetail(widget.routine.id, exercises);
+      final saved = await _repository.saveRoutineDetail(
+          widget.routine.id, _buildExercisesPayload());
 
       if (mounted) {
         setState(() {
           _isEditMode = false;
           _selecting.clear();
-          _rowsSnapshot = null; // 저장 성공 시 스냅샷 제거
+          _rowsSnapshot = null;
+          _initRows(saved.exercises); // 서버 응답의 실제 id 로 교체
+          _isSaving = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Row(
-              children: [
-                Icon(Icons.check_circle_outline, color: Colors.white, size: 18),
-                SizedBox(width: 8),
-                Text('저장되었습니다.'),
-              ],
-            ),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10)),
-            margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            duration: const Duration(seconds: 2),
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: const Row(children: [
+            Icon(Icons.check_circle_outline, color: Colors.white, size: 18),
+            SizedBox(width: 8),
+            Text('저장되었습니다.'),
+          ]),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          duration: const Duration(seconds: 2),
+        ));
       }
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Row(
-              children: [
-                Icon(Icons.error_outline, color: Colors.white, size: 18),
-                SizedBox(width: 8),
-                Text('저장에 실패했습니다.'),
-              ],
-            ),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10)),
-            margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          ),
-        );
+        setState(() => _isSaving = false);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: const Row(children: [
+            Icon(Icons.error_outline, color: Colors.white, size: 18),
+            SizedBox(width: 8),
+            Text('저장에 실패했습니다.'),
+          ]),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        ));
       }
     }
   }
 
-  // 저장 없이 편집 모드 종료 → 스냅샷으로 복구
   void _exitEditMode() {
     setState(() {
       _isEditMode = false;
@@ -241,9 +277,16 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
             ],
           ),
           actions: [
-            // 편집 모드가 아닐 때만 + 버튼 표시
             if (!_isEditMode)
-              IconButton(
+              _isSaving
+                  ? const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2)),
+              )
+                  : IconButton(
                 icon: const Icon(Icons.add),
                 onPressed: () async {
                   await Navigator.push(
@@ -251,37 +294,30 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
                     MaterialPageRoute(
                       builder: (_) => ExercisePickScreen(
                         alreadyAdded: _currentExerciseIds,
-                        onComplete: (exercises) {
-                          setState(() {
-                            for (final ex in exercises) {
-                              _rows.add(_SingleItem(
-                                exercise: RoutineExerciseModel(
-                                  id: -DateTime.now().millisecondsSinceEpoch,
-                                  exerciseId: ex.id,
-                                  exerciseName: ex.name,
-                                  target: ex.target,
-                                  orderIndex: _rows.length,
-                                ),
-                              ));
-                            }
-                          });
+                        onComplete: (exercises) async {
+                          await _addExercisesAndSave(exercises);
                         },
                       ),
                     ),
                   );
                 },
               ),
-            // 편집 모드 토글 버튼
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 200),
               child: _isEditMode
                   ? TextButton.icon(
                 key: const ValueKey('save'),
-                onPressed: _saveChanges,
-                icon: const Icon(Icons.check, size: 18),
+                onPressed: _isSaving ? null : _saveChanges,
+                icon: _isSaving
+                    ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child:
+                    CircularProgressIndicator(strokeWidth: 2))
+                    : const Icon(Icons.check, size: 18),
                 label: const Text('저장'),
-                style:
-                TextButton.styleFrom(foregroundColor: Colors.blue),
+                style: TextButton.styleFrom(
+                    foregroundColor: Colors.blue),
               )
                   : IconButton(
                 key: const ValueKey('edit'),
@@ -289,7 +325,6 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
                 onPressed: () => setState(() {
                   _isEditMode = true;
                   _selecting.clear();
-                  // 편집 모드 진입 시 스냅샷 저장
                   _rowsSnapshot = List.from(_rows);
                 }),
               ),
@@ -304,10 +339,10 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
     );
   }
 
-  // ── 일반 모드 ──
   Widget _buildNormalMode() {
     if (_rows.isEmpty) {
       return const Center(
+        key: ValueKey('empty'),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -342,7 +377,8 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(
-                  builder: (_) => WorkoutLogScreen.superset(ss.exercises)),
+                  builder: (_) =>
+                      WorkoutLogScreen.superset(ss.exercises)),
             ),
           );
         }
@@ -350,7 +386,6 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
     );
   }
 
-  // ── 편집 모드 ──
   Widget _buildEditMode() {
     return Column(
       key: const ValueKey('edit'),
@@ -358,7 +393,8 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
         _buildBanner(),
         Expanded(
           child: ReorderableListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             buildDefaultDragHandles: false,
             itemCount: _rows.length,
             onReorder: (oldIndex, newIndex) {
@@ -422,7 +458,6 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
     );
   }
 
-  // ── 배너 ──
   Widget _buildBanner() {
     return AnimatedSize(
       duration: const Duration(milliseconds: 200),
@@ -430,14 +465,13 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
       child: _selecting.isEmpty
           ? Container(
         width: double.infinity,
-        padding:
-        const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        padding: const EdgeInsets.symmetric(
+            horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
           color: Colors.grey.withOpacity(0.08),
           border: Border(
-            bottom: BorderSide(
-                color: Colors.grey.withOpacity(0.15), width: 1),
-          ),
+              bottom: BorderSide(
+                  color: Colors.grey.withOpacity(0.15), width: 1)),
         ),
         child: Row(
           children: [
@@ -446,22 +480,21 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
             const SizedBox(width: 6),
             Text(
               '← 스와이프 삭제  ·  ○ 탭 후 슈퍼세트 묶기  ·  ≡ 드래그 순서변경',
-              style: TextStyle(
-                  fontSize: 11, color: Colors.grey.shade500),
+              style:
+              TextStyle(fontSize: 11, color: Colors.grey.shade500),
             ),
           ],
         ),
       )
           : Container(
         width: double.infinity,
-        padding:
-        const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        padding: const EdgeInsets.symmetric(
+            horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
           color: Colors.blue.withOpacity(0.07),
           border: Border(
-            bottom: BorderSide(
-                color: Colors.blue.withOpacity(0.2), width: 1),
-          ),
+              bottom: BorderSide(
+                  color: Colors.blue.withOpacity(0.2), width: 1)),
         ),
         child: Row(
           children: [
@@ -469,27 +502,23 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
               padding: const EdgeInsets.symmetric(
                   horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                color: Colors.blue,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                '${_selecting.length}개 선택',
-                style: const TextStyle(
-                    fontSize: 12,
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold),
-              ),
+                  color: Colors.blue,
+                  borderRadius: BorderRadius.circular(20)),
+              child: Text('${_selecting.length}개 선택',
+                  style: const TextStyle(
+                      fontSize: 12,
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold)),
             ),
             const Spacer(),
             TextButton(
               onPressed: () => setState(() => _selecting.clear()),
               style: TextButton.styleFrom(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 8),
-                foregroundColor: Colors.grey,
-              ),
-              child:
-              const Text('취소', style: TextStyle(fontSize: 13)),
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 8),
+                  foregroundColor: Colors.grey),
+              child: const Text('취소',
+                  style: TextStyle(fontSize: 13)),
             ),
             const SizedBox(width: 4),
             FilledButton.icon(
@@ -511,7 +540,6 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
   }
 }
 
-// ── 데이터 모델 ──
 abstract class _RowItem {}
 
 class _SingleItem extends _RowItem {
@@ -525,7 +553,6 @@ class _SupersetItem extends _RowItem {
   _SupersetItem({required this.exercises, required this.groupId});
 }
 
-// ── 일반 모드 단일 카드 ──
 class _SingleCard extends StatelessWidget {
   final _SingleItem item;
   final VoidCallback onTap;
@@ -559,8 +586,8 @@ class _SingleCard extends StatelessWidget {
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 2),
           child: Text(item.exercise.target,
-              style:
-              TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+              style: TextStyle(
+                  fontSize: 12, color: Colors.grey.shade500)),
         ),
         trailing:
         const Icon(Icons.chevron_right, color: Colors.grey),
@@ -570,7 +597,6 @@ class _SingleCard extends StatelessWidget {
   }
 }
 
-// ── 일반 모드 슈퍼세트 카드 ──
 class _SupersetCard extends StatelessWidget {
   final _SupersetItem item;
   final VoidCallback onTap;
@@ -599,9 +625,8 @@ class _SupersetCard extends StatelessWidget {
                     horizontal: 8, vertical: 4),
                 margin: const EdgeInsets.only(right: 12, top: 2),
                 decoration: BoxDecoration(
-                  color: Colors.orange,
-                  borderRadius: BorderRadius.circular(8),
-                ),
+                    color: Colors.orange,
+                    borderRadius: BorderRadius.circular(8)),
                 child: const Text('SS',
                     style: TextStyle(
                         fontSize: 11,
@@ -650,7 +675,6 @@ class _SupersetCard extends StatelessWidget {
   }
 }
 
-// ── 편집 모드 단일 카드 ──
 class _EditSingleCard extends StatelessWidget {
   final int index;
   final _SingleItem item;
@@ -693,11 +717,10 @@ class _EditSingleCard extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(
-                color: isSelected
-                    ? Colors.blue
-                    : Colors.grey.shade400,
-                width: 2,
-              ),
+                  color: isSelected
+                      ? Colors.blue
+                      : Colors.grey.shade400,
+                  width: 2),
               color: isSelected ? Colors.blue : Colors.transparent,
             ),
             child: isSelected
@@ -712,8 +735,8 @@ class _EditSingleCard extends StatelessWidget {
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 2),
           child: Text(item.exercise.target,
-              style:
-              TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+              style: TextStyle(
+                  fontSize: 12, color: Colors.grey.shade500)),
         ),
         trailing: ReorderableDragStartListener(
           index: index,
@@ -728,7 +751,6 @@ class _EditSingleCard extends StatelessWidget {
   }
 }
 
-// ── 편집 모드 슈퍼세트 카드 ──
 class _EditSupersetCard extends StatelessWidget {
   final int index;
   final _SupersetItem item;
@@ -769,17 +791,14 @@ class _EditSupersetCard extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(
                       horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: Colors.orange,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    'SS  ${item.exercises.length}개',
-                    style: const TextStyle(
-                        fontSize: 11,
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5),
-                  ),
+                      color: Colors.orange,
+                      borderRadius: BorderRadius.circular(8)),
+                  child: Text('SS  ${item.exercises.length}개',
+                      style: const TextStyle(
+                          fontSize: 11,
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5)),
                 ),
                 const Spacer(),
                 GestureDetector(
@@ -810,9 +829,8 @@ class _EditSupersetCard extends StatelessWidget {
                     width: 3,
                     height: 36,
                     decoration: BoxDecoration(
-                      color: Colors.orange,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
+                        color: Colors.orange,
+                        borderRadius: BorderRadius.circular(2)),
                   ),
                   const SizedBox(width: 12),
                   Expanded(

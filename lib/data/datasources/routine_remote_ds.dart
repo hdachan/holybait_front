@@ -34,7 +34,6 @@ class RoutineRemoteDataSource {
     return RoutineModel.fromJson(res.data);
   }
 
-  // 편집 모드 전체 저장 (순서 + 슈퍼세트 + 새 운동 한번에)
   Future<RoutineModel> saveRoutineDetail(
       int routineId, List<Map<String, dynamic>> exercises) async {
     final res = await _dio.patch('/routines/$routineId/detail', data: {
@@ -65,16 +64,22 @@ class RoutineRemoteDataSource {
     return ExerciseModel.fromJson(res.data);
   }
 
-  Future<void> saveWorkout(
-      int routineExerciseId, List<Map<String, dynamic>> sets) async {
-    await _dio.post('/workouts', data: {
+  // isSuperset, isSupersetFirst 제거 — 서버에서 각 운동 독립 계산
+  Future<WorkoutSaveResult> saveWorkout(
+      int routineExerciseId,
+      List<Map<String, dynamic>> sets,
+      ) async {
+    final res = await _dio.post('/workouts', data: {
       'routineExerciseId': routineExerciseId,
       'sets': sets,
     });
+    return WorkoutSaveResult.fromJson(res.data);
   }
 
-  Future<List<WorkoutSetModel>> getRecentSets(int routineExerciseId) async {
+  // RecentSetsResponse 반환 — loggedAt 최상위 포함
+  Future<RecentSetsResponse?> getRecentSets(int routineExerciseId) async {
     final res = await _dio.get('/workouts/recent/$routineExerciseId');
-    return (res.data as List).map((e) => WorkoutSetModel.fromJson(e)).toList();
+    if (res.data == null) return null;
+    return RecentSetsResponse.fromJson(res.data as Map<String, dynamic>);
   }
 }
