@@ -10,8 +10,24 @@ class AdventureRemoteDataSource {
     return (res.data as List).map((e) => StageModel.fromJson(e)).toList();
   }
 
-  Future<CharacterStatModel> getCharacterStat() async {
+  // 내 모든 캐릭터
+  Future<List<CharacterStatModel>> getMyCharacters() async {
+    final res = await _dio.get('/adventures/characters');
+    return (res.data as List)
+        .map((e) => CharacterStatModel.fromJson(e))
+        .toList();
+  }
+
+  // 현재 활성 캐릭터
+  Future<CharacterStatModel> getActiveCharacter() async {
     final res = await _dio.get('/adventures/character');
+    return CharacterStatModel.fromJson(res.data);
+  }
+
+  // 캐릭터 변경
+  Future<CharacterStatModel> selectCharacter(int statId) async {
+    final res = await _dio.post('/adventures/character/select',
+        queryParameters: {'statId': statId});
     return CharacterStatModel.fromJson(res.data);
   }
 

@@ -5,8 +5,12 @@ class AdventureRepository {
   final _remote = AdventureRemoteDataSource();
 
   Future<List<StageModel>> getStages() => _remote.getStages();
-  Future<CharacterStatModel> getCharacterStat() => _remote.getCharacterStat();
-  Future<BattleStartResult> startBattle(int stageId) => _remote.startBattle(stageId);
+  Future<List<CharacterStatModel>> getMyCharacters() => _remote.getMyCharacters();
+  Future<CharacterStatModel> getActiveCharacter() => _remote.getActiveCharacter();
+  Future<CharacterStatModel> selectCharacter(int statId) =>
+      _remote.selectCharacter(statId);
+  Future<BattleStartResult> startBattle(int stageId) =>
+      _remote.startBattle(stageId);
   Future<BattleConfirmResult> confirmRewards(int battleId) =>
       _remote.confirmRewards(battleId);
 }

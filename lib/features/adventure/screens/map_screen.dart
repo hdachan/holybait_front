@@ -51,7 +51,7 @@ class _MapScreenState extends State<MapScreen> {
               itemCount: provider.stages.length,
               itemBuilder: (_, i) => _StageCard(
                 stage: provider.stages[i],
-                characterLevel: provider.characterStat?.level ?? 1,
+                characterLevel: provider.activeCharacter?.level ?? 1,
                 shoeCoin: currency.shoeCoin,
                 onTap: () => _onStageTap(provider.stages[i], currency),
               ),
@@ -64,7 +64,7 @@ class _MapScreenState extends State<MapScreen> {
 
   void _onStageTap(StageModel stage, CurrencyProvider currency) async {
     final provider = context.read<AdventureProvider>();
-    final level = provider.characterStat?.level ?? 1;
+    final level = provider.activeCharacter?.level ?? 1;
 
     if (level < stage.minLevel) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
