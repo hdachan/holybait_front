@@ -17,19 +17,34 @@ class _BattleScreenState extends State<BattleScreen>
 
   late int _playerHp;
   late int _monsterHp;
-  int _currentLogIndex = -1; // 현재 재생 중인 턴 인덱스
-  bool _isPlaying = false;
+  int _currentLogIndex = -1;
   bool _isFinished = false;
   bool _isConfirming = false;
 
-  // 몬스터 흔들기 애니메이션
-  late AnimationController _shakeController;
-  late Animation<double> _shakeAnim;
+  // 몬스터 흔들기
+  late AnimationController _monsterShakeCtrl;
+  late Animation<double> _monsterShakeAnim;
 
-  // 데미지 텍스트 표시
+  // 플레이어 피격 흔들기
+  late AnimationController _playerShakeCtrl;
+  late Animation<double> _playerShakeAnim;
+
+  // 몬스터 피격 플래시 (빨간색)
+  late AnimationController _monsterFlashCtrl;
+
+  // 플레이어 피격 플래시 (흰색)
+  late AnimationController _playerFlashCtrl;
+
+  // 몬스터 점프 (공격 시)
+  late AnimationController _monsterJumpCtrl;
+  late Animation<double> _monsterJumpAnim;
+
   int? _lastDamage;
   bool _isDoubleAttack = false;
   bool _isDamageToPlayer = false;
+  int _damageKey = 0;
+
+  TurnLog? _currentLog;
 
   @override
   void initState() {
@@ -37,56 +52,108 @@ class _BattleScreenState extends State<BattleScreen>
     _playerHp = widget.battleResult.playerMaxHp;
     _monsterHp = widget.battleResult.monsterHp;
 
-    _shakeController = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 300));
-    _shakeAnim = Tween<double>(begin: 0, end: 10).animate(
-        CurvedAnimation(parent: _shakeController, curve: Curves.elasticIn));
+    // 몬스터 흔들기 (피격)
+    _monsterShakeCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 350));
+    _monsterShakeAnim = TweenSequence([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: -10.0), weight: 20),
+      TweenSequenceItem(tween: Tween(begin: -10.0, end: 10.0), weight: 40),
+      TweenSequenceItem(tween: Tween(begin: 10.0, end: -6.0), weight: 20),
+      TweenSequenceItem(tween: Tween(begin: -6.0, end: 0.0), weight: 20),
+    ]).animate(CurvedAnimation(
+        parent: _monsterShakeCtrl, curve: Curves.easeInOut));
 
-    // 잠시 후 자동 재생 시작
-    Future.delayed(const Duration(milliseconds: 600), _playNext);
+    // 플레이어 흔들기 (피격)
+    _playerShakeCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 350));
+    _playerShakeAnim = TweenSequence([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: -10.0), weight: 20),
+      TweenSequenceItem(tween: Tween(begin: -10.0, end: 10.0), weight: 40),
+      TweenSequenceItem(tween: Tween(begin: 10.0, end: -6.0), weight: 20),
+      TweenSequenceItem(tween: Tween(begin: -6.0, end: 0.0), weight: 20),
+    ]).animate(CurvedAnimation(
+        parent: _playerShakeCtrl, curve: Curves.easeInOut));
+
+    // 몬스터 피격 플래시
+    _monsterFlashCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 200));
+
+    // 플레이어 피격 플래시
+    _playerFlashCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 200));
+
+    // 몬스터 공격 점프 (위아래)
+    _monsterJumpCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 300));
+    _monsterJumpAnim = TweenSequence([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: -18.0), weight: 50),
+      TweenSequenceItem(tween: Tween(begin: -18.0, end: 0.0), weight: 50),
+    ]).animate(
+        CurvedAnimation(parent: _monsterJumpCtrl, curve: Curves.easeInOut));
+
+    Future.delayed(const Duration(milliseconds: 700), _playNext);
   }
 
   @override
   void dispose() {
-    _shakeController.dispose();
+    _monsterShakeCtrl.dispose();
+    _playerShakeCtrl.dispose();
+    _monsterFlashCtrl.dispose();
+    _playerFlashCtrl.dispose();
+    _monsterJumpCtrl.dispose();
     super.dispose();
   }
 
-  // 턴 로그 하나씩 재생
   Future<void> _playNext() async {
     final logs = widget.battleResult.logs;
     if (_currentLogIndex >= logs.length - 1) {
-      setState(() => _isFinished = true);
+      if (mounted) setState(() => _isFinished = true);
       return;
     }
 
-    setState(() {
-      _isPlaying = true;
-      _currentLogIndex++;
-    });
+    final nextIndex = _currentLogIndex + 1;
+    final log = logs[nextIndex];
 
-    final log = logs[_currentLogIndex];
-
+    if (!mounted) return;
     setState(() {
+      _currentLogIndex = nextIndex;
+      _currentLog = log;
       _lastDamage = log.damage;
       _isDoubleAttack = log.isDoubleAttack;
       _isDamageToPlayer = !log.isPlayer;
-      _playerHp = log.playerHpAfter;
-      _monsterHp = log.monsterHpAfter;
+      _damageKey++;
     });
 
-    // 몬스터 공격 시 플레이어 HP바 흔들기, 플레이어 공격 시 몬스터 흔들기
-    _shakeController.forward(from: 0);
+    if (log.isPlayer) {
+      // 플레이어 공격 → 몬스터 흔들기 + 빨간 플래시
+      _monsterShakeCtrl.forward(from: 0);
+      _monsterFlashCtrl.forward(from: 0).then((_) {
+        if (mounted) _monsterFlashCtrl.reverse();
+      });
+    } else {
+      // 몬스터 공격 → 몬스터 점프 + 플레이어 흔들기 + 흰 플래시
+      _monsterJumpCtrl.forward(from: 0);
+      await Future.delayed(const Duration(milliseconds: 150));
+      _playerShakeCtrl.forward(from: 0);
+      _playerFlashCtrl.forward(from: 0).then((_) {
+        if (mounted) _playerFlashCtrl.reverse();
+      });
+    }
 
-    // 다음 턴까지 대기
-    await Future.delayed(const Duration(milliseconds: 900));
+    await Future.delayed(const Duration(milliseconds: 300));
 
     if (mounted) {
       setState(() {
-        _lastDamage = null;
-        _isPlaying = false;
+        _playerHp = log.playerHpAfter;
+        _monsterHp = log.monsterHpAfter;
       });
-      await Future.delayed(const Duration(milliseconds: 200));
+    }
+
+    await Future.delayed(const Duration(milliseconds: 600));
+
+    if (mounted) {
+      setState(() => _lastDamage = null);
+      await Future.delayed(const Duration(milliseconds: 100));
       if (mounted) _playNext();
     }
   }
@@ -107,10 +174,7 @@ class _BattleScreenState extends State<BattleScreen>
       return;
     }
 
-    // 재화 갱신
     context.read<CurrencyProvider>().load();
-
-    // 결과 다이얼로그
     await _showResultDialog(result);
     if (mounted) Navigator.pop(context);
   }
@@ -120,12 +184,10 @@ class _BattleScreenState extends State<BattleScreen>
       context: context,
       barrierDismissible: false,
       builder: (_) => AlertDialog(
-        title: Row(children: [
-          Text(result.isWin ? '🎉 승리!' : '💀 패배',
-              style: TextStyle(
-                  color: result.isWin ? Colors.amber : Colors.red,
-                  fontWeight: FontWeight.bold)),
-        ]),
+        title: Text(result.isWin ? '🎉 승리!' : '💀 패배',
+            style: TextStyle(
+                color: result.isWin ? Colors.amber : Colors.red,
+                fontWeight: FontWeight.bold)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -153,7 +215,7 @@ class _BattleScreenState extends State<BattleScreen>
                 minHeight: 8,
                 backgroundColor: Colors.grey.withOpacity(0.2),
                 valueColor:
-                    const AlwaysStoppedAnimation(Colors.deepPurple),
+                const AlwaysStoppedAnimation(Colors.deepPurple),
               ),
             ),
             const SizedBox(height: 4),
@@ -188,17 +250,40 @@ class _BattleScreenState extends State<BattleScreen>
     );
   }
 
+  String _battleMessage() {
+    if (_currentLog == null) return '몬스터가 나타났다!\n어떻게 하시겠습니까?';
+    if (_isFinished) {
+      return widget.battleResult.result == 'WIN'
+          ? '${widget.battleResult.monsterName}을 처치했습니다!\n보상을 받으세요.'
+          : '패배했습니다...\n다음엔 더 강해져서 도전하세요!';
+    }
+    final log = _currentLog!;
+    if (log.isPlayer) {
+      return log.isDoubleAttack
+          ? '💥 더블어택! ${widget.battleResult.monsterName}에게 ${log.damage} 데미지!'
+          : '${widget.battleResult.monsterName}에게 ${log.damage} 데미지를 입혔습니다.';
+    } else {
+      return log.isDoubleAttack
+          ? '💥 ${widget.battleResult.monsterName}의 더블어택!\n${log.damage} 데미지를 받았습니다!'
+          : '${widget.battleResult.monsterName}이 ${log.damage} 데미지로 공격했습니다.';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final battle = widget.battleResult;
-    final logs = battle.logs;
-    final currentLog =
-        _currentLogIndex >= 0 && _currentLogIndex < logs.length
-            ? logs[_currentLogIndex]
-            : null;
+    final activeChar =
+        context.watch<AdventureProvider>().activeCharacter;
+
+    final charEmoji = () {
+      switch (activeChar?.imageKey) {
+        case 'char_dragon': return '🐉';
+        case 'char_knight': return '⚔️';
+        default: return '🐻';
+      }
+    }();
 
     return PopScope(
-      // 배틀 중 뒤로가기 방지 (중간에 나가면 재확인)
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
@@ -207,7 +292,7 @@ class _BattleScreenState extends State<BattleScreen>
           builder: (_) => AlertDialog(
             title: const Text('모험 중단'),
             content: const Text(
-                '지금 나가면 보상을 받을 수 없습니다.\n다시 입장할 경우 신발코인이 소모됩니다.\n나가시겠습니까?'),
+                '지금 나가면 보상을 받을 수 없습니다.\n나갔다 들어오면 다시 볼 수 있습니다.\n나가시겠습니까?'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context, false),
@@ -233,19 +318,36 @@ class _BattleScreenState extends State<BattleScreen>
                 padding: const EdgeInsets.all(16),
                 child: Row(
                   children: [
-                    // 플레이어 HP
+                    // 플레이어 HP (캐릭터 이름 표시)
                     Expanded(
-                      child: _HpBar(
-                        name: '나',
-                        currentHp: _playerHp,
-                        maxHp: battle.playerMaxHp,
-                        atk: battle.playerAtk,
-                        def: battle.playerDef,
-                        color: Colors.blue,
+                      child: AnimatedBuilder(
+                        animation: _playerShakeAnim,
+                        builder: (_, child) => Transform.translate(
+                          offset: Offset(_playerShakeAnim.value, 0),
+                          child: AnimatedBuilder(
+                            animation: _playerFlashCtrl,
+                            builder: (_, child) => ColorFiltered(
+                              colorFilter: ColorFilter.mode(
+                                Colors.white.withOpacity(
+                                    _playerFlashCtrl.value * 0.4),
+                                BlendMode.srcATop,
+                              ),
+                              child: child,
+                            ),
+                            child: _HpBar(
+                              name: activeChar?.characterName ?? '나',
+                              emoji: charEmoji,
+                              currentHp: _playerHp,
+                              maxHp: battle.playerMaxHp,
+                              atk: battle.playerAtk,
+                              def: battle.playerDef,
+                              color: Colors.blue,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
-                    // VS
                     const Text('VS',
                         style: TextStyle(
                             color: Colors.white,
@@ -256,6 +358,7 @@ class _BattleScreenState extends State<BattleScreen>
                     Expanded(
                       child: _HpBar(
                         name: battle.monsterName,
+                        emoji: '👹',
                         currentHp: _monsterHp,
                         maxHp: battle.monsterHp,
                         atk: battle.monsterAtk,
@@ -274,55 +377,86 @@ class _BattleScreenState extends State<BattleScreen>
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
+                      // 몬스터
                       AnimatedBuilder(
-                        animation: _shakeAnim,
+                        animation: Listenable.merge(
+                            [_monsterShakeAnim, _monsterJumpAnim]),
                         builder: (_, child) => Transform.translate(
-                          offset: Offset(_isDamageToPlayer ? 0 : _shakeAnim.value, 0),
+                          offset: Offset(
+                            _monsterShakeAnim.value,
+                            _monsterJumpAnim.value,
+                          ),
                           child: child,
                         ),
-                        child: Container(
-                          width: 200,
-                          height: 200,
-                          decoration: BoxDecoration(
-                            color: Colors.green.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                                color: Colors.green.withOpacity(0.3), width: 2),
+                        child: AnimatedBuilder(
+                          animation: _monsterFlashCtrl,
+                          builder: (_, child) => ColorFiltered(
+                            colorFilter: ColorFilter.mode(
+                              Colors.red.withOpacity(
+                                  _monsterFlashCtrl.value * 0.6),
+                              BlendMode.srcATop,
+                            ),
+                            child: child,
                           ),
-                          child: const Icon(Icons.pest_control,
-                              size: 100, color: Colors.green),
+                          child: Container(
+                            width: 180,
+                            height: 180,
+                            decoration: BoxDecoration(
+                              color: Colors.green.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                  color: Colors.green.withOpacity(0.3),
+                                  width: 2),
+                            ),
+                            child: const Center(
+                              child: Text('👹',
+                                  style: TextStyle(fontSize: 90)),
+                            ),
+                          ),
                         ),
                       ),
 
-                      // 데미지 텍스트
+                      // 데미지 숫자 (공중으로 떠오름)
                       if (_lastDamage != null)
-                        Positioned(
-                          top: 20,
-                          child: TweenAnimationBuilder<double>(
-                            tween: Tween(begin: 0, end: 1),
-                            duration: const Duration(milliseconds: 400),
-                            builder: (_, v, child) => Opacity(
-                              opacity: (1 - v * 0.5),
-                              child: Transform.translate(
-                                  offset: Offset(0, -30 * v), child: child),
-                            ),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: _isDamageToPlayer
-                                    ? Colors.red
-                                    : Colors.orange,
-                                borderRadius: BorderRadius.circular(20),
+                        TweenAnimationBuilder<double>(
+                          key: ValueKey(_damageKey),
+                          tween: Tween(begin: 0.0, end: 1.0),
+                          duration: const Duration(milliseconds: 600),
+                          builder: (_, v, __) => Opacity(
+                            opacity: v < 0.6 ? 1.0 : (1.0 - v) / 0.4,
+                            child: Transform.translate(
+                              offset: Offset(
+                                _isDamageToPlayer ? -60 : 60,
+                                -60 * v,
                               ),
-                              child: Text(
-                                _isDoubleAttack
-                                    ? '💥 $_lastDamage!'
-                                    : '-$_lastDamage',
-                                style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 22),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 14, vertical: 7),
+                                decoration: BoxDecoration(
+                                  color: _isDamageToPlayer
+                                      ? Colors.red.shade700
+                                      : Colors.orange.shade700,
+                                  borderRadius: BorderRadius.circular(20),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: (_isDamageToPlayer
+                                          ? Colors.red
+                                          : Colors.orange)
+                                          .withOpacity(0.6),
+                                      blurRadius: 14,
+                                      spreadRadius: 1,
+                                    )
+                                  ],
+                                ),
+                                child: Text(
+                                  _isDoubleAttack
+                                      ? '💥 x2  $_lastDamage!'
+                                      : '-$_lastDamage',
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 22),
+                                ),
                               ),
                             ),
                           ),
@@ -340,11 +474,13 @@ class _BattleScreenState extends State<BattleScreen>
                 decoration: BoxDecoration(
                   color: Colors.black.withOpacity(0.5),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.white.withOpacity(0.1)),
+                  border:
+                  Border.all(color: Colors.white.withOpacity(0.1)),
                 ),
                 child: Text(
-                  _battleMessage(currentLog, battle.monsterName),
-                  style: const TextStyle(color: Colors.white, fontSize: 15),
+                  _battleMessage(),
+                  style: const TextStyle(
+                      color: Colors.white, fontSize: 15),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -355,39 +491,41 @@ class _BattleScreenState extends State<BattleScreen>
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                 child: _isFinished
                     ? ElevatedButton(
-                        onPressed: _isConfirming ? null : _confirm,
-                        style: ElevatedButton.styleFrom(
-                          minimumSize: const Size(double.infinity, 52),
-                          backgroundColor:
-                              battle.result == 'WIN' ? Colors.amber : Colors.red,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
-                        ),
-                        child: _isConfirming
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                    strokeWidth: 2, color: Colors.white))
-                            : Text(
-                                battle.result == 'WIN'
-                                    ? '🎉 보상 받기'
-                                    : '💀 결과 확인',
-                                style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold)),
-                      )
+                  onPressed: _isConfirming ? null : _confirm,
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 52),
+                    backgroundColor: battle.result == 'WIN'
+                        ? Colors.amber
+                        : Colors.red,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: _isConfirming
+                      ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white))
+                      : Text(
+                      battle.result == 'WIN'
+                          ? '🎉 보상 받기'
+                          : '💀 결과 확인',
+                      style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold)),
+                )
                     : OutlinedButton(
-                        onPressed: null,
-                        style: OutlinedButton.styleFrom(
-                          minimumSize: const Size(double.infinity, 52),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
-                        ),
-                        child: const Text('배틀 진행 중...',
-                            style: TextStyle(color: Colors.grey)),
-                      ),
+                  onPressed: null,
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 52),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('배틀 진행 중...',
+                      style: TextStyle(color: Colors.grey)),
+                ),
               ),
             ],
           ),
@@ -395,28 +533,12 @@ class _BattleScreenState extends State<BattleScreen>
       ),
     );
   }
-
-  String _battleMessage(TurnLog? log, String monsterName) {
-    if (log == null) return '어떻게 하시겠습니까?\n몬스터의 능력치를 잘 보고 결정하세요.';
-    if (_isFinished) {
-      return widget.battleResult.result == 'WIN'
-          ? '$monsterName을 처치했습니다!\n보상을 받으세요.'
-          : '패배했습니다...\n다음엔 더 강해져서 도전하세요!';
-    }
-    if (log.isPlayer) {
-      return log.isDoubleAttack
-          ? '💥 더블어택! $monsterName에게 ${log.damage} 데미지!'
-          : '$monsterName에게 ${log.damage} 데미지를 입혔습니다.';
-    } else {
-      return log.isDoubleAttack
-          ? '💥 $monsterName의 더블어택! ${log.damage} 데미지를 받았습니다!'
-          : '$monsterName이 ${log.damage} 데미지로 공격했습니다.';
-    }
-  }
 }
 
+// ── HP 바 ──
 class _HpBar extends StatelessWidget {
   final String name;
+  final String emoji;
   final int currentHp;
   final int maxHp;
   final int atk;
@@ -426,6 +548,7 @@ class _HpBar extends StatelessWidget {
 
   const _HpBar({
     required this.name,
+    required this.emoji,
     required this.currentHp,
     required this.maxHp,
     required this.atk,
@@ -437,6 +560,11 @@ class _HpBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ratio = (currentHp / maxHp).clamp(0.0, 1.0);
+    final barColor = ratio > 0.5
+        ? color
+        : ratio > 0.25
+        ? Colors.orange
+        : Colors.red;
 
     return Container(
       padding: const EdgeInsets.all(10),
@@ -448,15 +576,23 @@ class _HpBar extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(name,
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13),
-              overflow: TextOverflow.ellipsis),
+          Row(
+            children: [
+              Text(emoji, style: const TextStyle(fontSize: 14)),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(name,
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12),
+                    overflow: TextOverflow.ellipsis),
+              ),
+            ],
+          ),
           const SizedBox(height: 4),
           Text('$currentHp / $maxHp',
-              style: TextStyle(color: color, fontSize: 12)),
+              style: TextStyle(color: color, fontSize: 11)),
           const SizedBox(height: 4),
           ClipRRect(
             borderRadius: BorderRadius.circular(3),
@@ -464,15 +600,13 @@ class _HpBar extends StatelessWidget {
               value: ratio,
               minHeight: 8,
               backgroundColor: Colors.grey.withOpacity(0.3),
-              valueColor: AlwaysStoppedAnimation(
-                  ratio > 0.5 ? color : Colors.orange),
+              valueColor: AlwaysStoppedAnimation(barColor),
             ),
           ),
-          const SizedBox(height: 6),
-          Row(children: [
-            Text('⚔️$atk  🛡️$def',
-                style: const TextStyle(color: Colors.grey, fontSize: 11)),
-          ]),
+          const SizedBox(height: 5),
+          Text('⚔️$atk  🛡️$def',
+              style: const TextStyle(
+                  color: Colors.grey, fontSize: 10)),
         ],
       ),
     );

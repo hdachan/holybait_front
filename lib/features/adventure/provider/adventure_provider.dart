@@ -6,15 +6,16 @@ class AdventureProvider extends ChangeNotifier {
   final _repository = AdventureRepository();
 
   List<StageModel> stages = [];
-  List<CharacterStatModel> myCharacters = [];  // 내 모든 캐릭터
-  CharacterStatModel? activeCharacter;          // 현재 활성 캐릭터
+  List<CharacterStatModel> myCharacters = [];
+  CharacterStatModel? activeCharacter;
   BattleStartResult? currentBattle;
+  BattleStartResult? pendingBattle;  // 미수령 배틀
   BattleConfirmResult? confirmResult;
 
   bool isLoading = false;
+  bool isCheckingPending = false;
   String? error;
 
-  // 스테이지 + 캐릭터 모두 로드
   Future<void> loadStages() async {
     isLoading = true;
     notifyListeners();
@@ -31,30 +32,43 @@ class AdventureProvider extends ChangeNotifier {
     }
   }
 
-  // 캐릭터 변경
+  // 미수령 배틀 체크 — 맵 화면 진입 시 호출
+  Future<BattleStartResult?> checkPendingBattle() async {
+    isCheckingPending = true;
+    notifyListeners();
+    try {
+      pendingBattle = await _repository.getPendingBattle();
+      return pendingBattle;
+    } catch (_) {
+      return null;
+    } finally {
+      isCheckingPending = false;
+      notifyListeners();
+    }
+  }
+
+  // 배틀 포기
+  Future<void> abandonBattle(int battleId) async {
+    try {
+      await _repository.abandonBattle(battleId);
+      pendingBattle = null;
+      notifyListeners();
+    } catch (e) {
+      error = e.toString();
+      notifyListeners();
+    }
+  }
+
   Future<void> selectCharacter(int statId) async {
     try {
       final updated = await _repository.selectCharacter(statId);
-      // 로컬 상태 업데이트
-      myCharacters = myCharacters.map((c) {
-        if (c.statId == statId) {
-          return CharacterStatModel(
-            statId: c.statId, characterId: c.characterId,
-            characterName: c.characterName, imageKey: c.imageKey,
-            isActive: true, level: c.level, exp: c.exp,
-            requiredExp: c.requiredExp, atk: c.atk, def: c.def,
-            hp: c.hp, maxHp: c.maxHp,
-          );
-        } else {
-          return CharacterStatModel(
-            statId: c.statId, characterId: c.characterId,
-            characterName: c.characterName, imageKey: c.imageKey,
-            isActive: false, level: c.level, exp: c.exp,
-            requiredExp: c.requiredExp, atk: c.atk, def: c.def,
-            hp: c.hp, maxHp: c.maxHp,
-          );
-        }
-      }).toList();
+      myCharacters = myCharacters.map((c) => CharacterStatModel(
+        statId: c.statId, characterId: c.characterId,
+        characterName: c.characterName, imageKey: c.imageKey,
+        isActive: c.statId == statId,
+        level: c.level, exp: c.exp, requiredExp: c.requiredExp,
+        atk: c.atk, def: c.def, hp: c.hp, maxHp: c.maxHp,
+      )).toList();
       activeCharacter = updated;
       notifyListeners();
     } catch (e) {
@@ -84,8 +98,8 @@ class AdventureProvider extends ChangeNotifier {
     isLoading = true;
     notifyListeners();
     try {
-      confirmResult = await _repository.confirmRewards(currentBattle!.battleId);
-      // 캐릭터 스탯 갱신
+      confirmResult =
+      await _repository.confirmRewards(currentBattle!.battleId);
       await loadStages();
       return confirmResult;
     } catch (e) {
@@ -100,6 +114,7 @@ class AdventureProvider extends ChangeNotifier {
   void clearBattle() {
     currentBattle = null;
     confirmResult = null;
+    pendingBattle = null;
     notifyListeners();
   }
 }

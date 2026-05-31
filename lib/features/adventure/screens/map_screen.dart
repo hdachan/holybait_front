@@ -16,9 +16,76 @@ class _MapScreenState extends State<MapScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<AdventureProvider>().loadStages();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final provider = context.read<AdventureProvider>();
+      await provider.loadStages();
+      // 미수령 배틀 체크
+      await _checkPendingBattle();
     });
+  }
+
+  // 미수령 배틀 체크 — 있으면 팝업
+  Future<void> _checkPendingBattle() async {
+    final provider = context.read<AdventureProvider>();
+    final pending = await provider.checkPendingBattle();
+
+    if (pending == null || !mounted) return;
+
+    final action = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        title: const Text('이전 배틀이 있습니다'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('${pending.monsterName} 와의 배틀이 완료되지 않았습니다.'),
+            const SizedBox(height: 12),
+            const Text('이어서 하시겠습니까?',
+                style: TextStyle(color: Colors.grey, fontSize: 13)),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'abandon'),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('포기하기'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, 'resume'),
+            child: const Text('이어서 하기'),
+          ),
+        ],
+      ),
+    );
+
+    if (!mounted) return;
+
+    if (action == 'resume') {
+      // 배틀 화면으로 이동 (처음부터 재생)
+      provider.currentBattle = pending;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+            builder: (_) => BattleScreen(battleResult: pending)),
+      ).then((_) {
+        provider.loadStages();
+        context.read<CurrencyProvider>().load();
+      });
+    } else if (action == 'abandon') {
+      // 포기
+      await provider.abandonBattle(pending.battleId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: const Text('배틀을 포기했습니다.'),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10)),
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        ));
+      }
+    }
   }
 
   @override
@@ -35,7 +102,6 @@ class _MapScreenState extends State<MapScreen> {
           ? const Center(child: CircularProgressIndicator())
           : Column(
         children: [
-          // 코인 표시 (골드 + 신발코인)
           _CoinBar(currency: currency),
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -51,9 +117,11 @@ class _MapScreenState extends State<MapScreen> {
               itemCount: provider.stages.length,
               itemBuilder: (_, i) => _StageCard(
                 stage: provider.stages[i],
-                characterLevel: provider.activeCharacter?.level ?? 1,
+                characterLevel:
+                provider.activeCharacter?.level ?? 1,
                 shoeCoin: currency.shoeCoin,
-                onTap: () => _onStageTap(provider.stages[i], currency),
+                onTap: () =>
+                    _onStageTap(provider.stages[i], currency),
               ),
             ),
           ),
@@ -70,7 +138,8 @@ class _MapScreenState extends State<MapScreen> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('Lv.${stage.minLevel} 이상부터 입장 가능합니다.'),
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10)),
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       ));
       return;
@@ -78,10 +147,12 @@ class _MapScreenState extends State<MapScreen> {
 
     if (currency.shoeCoin < stage.shoeCoinCost) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('신발코인이 부족합니다. (보유: ${currency.shoeCoin}개)'),
+        content:
+        Text('신발코인이 부족합니다. (보유: ${currency.shoeCoin}개)'),
         backgroundColor: Colors.red,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10)),
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       ));
       return;
@@ -101,7 +172,8 @@ class _MapScreenState extends State<MapScreen> {
               const Text('👟 신발코인 '),
               Text('${stage.shoeCoinCost}개',
                   style: const TextStyle(
-                      fontWeight: FontWeight.bold, color: Colors.orange)),
+                      fontWeight: FontWeight.bold,
+                      color: Colors.orange)),
               const Text(' 소모'),
             ]),
             const SizedBox(height: 4),
@@ -131,8 +203,8 @@ class _MapScreenState extends State<MapScreen> {
           content: Text(provider.error ?? '모험 시작에 실패했습니다.'),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
-          shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10)),
           margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         ));
       }
@@ -152,7 +224,6 @@ class _MapScreenState extends State<MapScreen> {
   }
 }
 
-// 골드 + 신발코인 표시 바
 class _CoinBar extends StatelessWidget {
   final CurrencyProvider currency;
   const _CoinBar({required this.currency});
@@ -164,7 +235,8 @@ class _CoinBar extends StatelessWidget {
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         border: Border(
-            bottom: BorderSide(color: Colors.grey.withOpacity(0.15))),
+            bottom:
+            BorderSide(color: Colors.grey.withOpacity(0.15))),
       ),
       child: Row(
         children: [
@@ -189,22 +261,25 @@ class _Chip extends StatelessWidget {
   final Color color;
   const _Chip(this.icon, this.value, this.color);
 
-  @override
-  Widget build(BuildContext context) {
-    return Row(mainAxisSize: MainAxisSize.min, children: [
-      Text(icon, style: const TextStyle(fontSize: 18)),
-      const SizedBox(width: 6),
-      Text(_fmt(value),
-          style: TextStyle(
-              fontSize: 15, fontWeight: FontWeight.bold, color: color)),
-    ]);
-  }
-
   String _fmt(int n) {
     if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
     if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}K';
     return n.toString();
   }
+
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Text(icon, style: const TextStyle(fontSize: 18)),
+      const SizedBox(width: 6),
+      Text(_fmt(value),
+          style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              color: color)),
+    ],
+  );
 }
 
 class _StageCard extends StatelessWidget {
@@ -253,7 +328,8 @@ class _StageCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: isLocked
-                    ? const Icon(Icons.lock, color: Colors.grey, size: 28)
+                    ? const Icon(Icons.lock,
+                    color: Colors.grey, size: 28)
                     : const Icon(Icons.forest_rounded,
                     color: Colors.deepPurple, size: 32),
               ),
@@ -300,7 +376,8 @@ class _StageCard extends StatelessWidget {
                                   ? Colors.orange
                                   : Colors.red,
                               fontSize: 13)),
-                      Text('  Lv.${stage.minLevel}~${stage.maxLevel}',
+                      Text(
+                          '  Lv.${stage.minLevel}~${stage.maxLevel}',
                           style: const TextStyle(
                               color: Colors.grey, fontSize: 12)),
                     ]),

@@ -18,10 +18,17 @@ class _CharacterScreenState extends State<CharacterScreen> {
   @override
   void initState() {
     super.initState();
-    _pageController = PageController(viewportFraction: 0.78);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    _pageController = PageController(viewportFraction: 1.0);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       context.read<CurrencyProvider>().load();
-      context.read<AdventureProvider>().loadStages();
+      await context.read<AdventureProvider>().loadStages();
+
+      final characters = context.read<AdventureProvider>().myCharacters;
+      final activeIndex = characters.indexWhere((c) => c.isActive);
+      if (activeIndex >= 0 && mounted) {
+        setState(() => _currentPage = activeIndex);
+        _pageController.jumpToPage(activeIndex);
+      }
     });
   }
 
@@ -31,143 +38,163 @@ class _CharacterScreenState extends State<CharacterScreen> {
     super.dispose();
   }
 
+  String _theme(String? key) {
+    switch (key) {
+      case 'char_dragon': return 'dragon';
+      case 'char_knight': return 'knight';
+      default: return 'bear';
+    }
+  }
+
+  String _fmt(int n) {
+    if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
+    if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}K';
+    return n.toString();
+  }
+
   @override
   Widget build(BuildContext context) {
     final currency = context.watch<CurrencyProvider>();
     final adventure = context.watch<AdventureProvider>();
     final characters = adventure.myCharacters;
-
     final currentStat = characters.isNotEmpty && _currentPage < characters.length
         ? characters[_currentPage]
-        : adventure.activeCharacter;
+        : null;
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF8F7FF),
       appBar: AppBar(
-        title: const Text('캐릭터'),
+        backgroundColor: const Color(0xFFF8F7FF),
+        elevation: 0,
+        title: const Text('캐릭터',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         centerTitle: true,
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: Row(children: [
+              const Text('🪙', style: TextStyle(fontSize: 15)),
+              const SizedBox(width: 4),
+              Text(_fmt(currency.gold),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFFFFB300),
+                      fontSize: 14)),
+              const SizedBox(width: 12),
+              const Text('👟', style: TextStyle(fontSize: 15)),
+              const SizedBox(width: 4),
+              Text(_fmt(currency.shoeCoin),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF42A5F5),
+                      fontSize: 14)),
+            ]),
+          ),
+        ],
       ),
       body: adventure.isLoading
           ? const Center(child: CircularProgressIndicator())
+          : characters.isEmpty
+          ? _buildError(adventure)
           : Column(
         children: [
-          _CurrencyBar(currency: currency),
-          Expanded(
-            child: characters.isEmpty
-                ? Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.error_outline,
-                      color: Colors.grey, size: 40),
-                  const SizedBox(height: 12),
-                  const Text('캐릭터 정보를 불러올 수 없습니다.',
-                      style: TextStyle(color: Colors.grey)),
-                  if (adventure.error != null)
-                    Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Text(adventure.error!,
-                          style: const TextStyle(
-                              color: Colors.red, fontSize: 12),
-                          textAlign: TextAlign.center),
-                    ),
-                  const SizedBox(height: 12),
-                  TextButton.icon(
-                    onPressed: () => adventure.loadStages(),
-                    icon: const Icon(Icons.refresh),
-                    label: const Text('다시 시도'),
-                  ),
-                ],
+          // 레벨 바
+          if (currentStat != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+              child: _LevelBar(stat: currentStat),
+            ),
+
+          // 캐릭터 카드 슬라이더
+          SizedBox(
+            height: 220,
+            child: PageView.builder(
+              controller: _pageController,
+              itemCount: characters.length,
+              onPageChanged: (i) =>
+                  setState(() => _currentPage = i),
+              itemBuilder: (_, i) => _CharacterCard(
+                stat: characters[i],
+                onSelect: () =>
+                    _onSelectCharacter(characters[i].statId),
+                theme: _theme(characters[i].imageKey),
               ),
-            )
-                : SingleChildScrollView(
+            ),
+          ),
+
+          // 인디케이터
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(characters.length, (i) {
+              final active = _currentPage == i;
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                margin: const EdgeInsets.symmetric(horizontal: 3),
+                width: active ? 20 : 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: active
+                      ? const Color(0xFF6C47FF)
+                      : Colors.grey.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              );
+            }),
+          ),
+          const SizedBox(height: 12),
+
+          // 스탯 + 레벨업 안내
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Column(
                 children: [
-                  const SizedBox(height: 16),
-
-                  // 레벨 바
-                  if (currentStat != null)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20),
-                      child: _LevelBar(stat: currentStat),
-                    ),
-                  const SizedBox(height: 20),
-
-                  // 캐릭터 PageView — 높이 280으로 늘림
-                  SizedBox(
-                    height: 280,
-                    child: PageView.builder(
-                      controller: _pageController,
-                      itemCount: characters.length,
-                      onPageChanged: (i) =>
-                          setState(() => _currentPage = i),
-                      itemBuilder: (_, i) => _CharacterCard(
-                        stat: characters[i],
-                        isSelected: _currentPage == i,
-                        onSelect: () => _onSelectCharacter(
-                            characters[i].statId),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // 페이지 인디케이터
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(
-                      characters.length,
-                          (i) => AnimatedContainer(
-                        duration:
-                        const Duration(milliseconds: 200),
-                        margin: const EdgeInsets.symmetric(
-                            horizontal: 3),
-                        width: _currentPage == i ? 16 : 6,
-                        height: 6,
-                        decoration: BoxDecoration(
-                          color: _currentPage == i
-                              ? Colors.deepPurple
-                              : Colors.grey.withOpacity(0.3),
-                          borderRadius:
-                          BorderRadius.circular(3),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // 스탯 카드
-                  if (currentStat != null)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20),
-                      child: _StatCard(stat: currentStat),
-                    ),
-                  const SizedBox(height: 16),
-
-                  // 레벨업 안내
-                  if (currentStat != null)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20),
-                      child: _NextLevelInfo(stat: currentStat),
-                    ),
-                  const SizedBox(height: 24),
-
-                  // 하단 슬롯
-                  _CharacterSlots(
-                    characters: characters,
-                    currentIndex: _currentPage,
-                    onTap: (i) {
-                      _pageController.animateToPage(i,
-                          duration: const Duration(
-                              milliseconds: 300),
-                          curve: Curves.easeInOut);
-                    },
-                  ),
-                  const SizedBox(height: 24),
+                  if (currentStat != null) ...[
+                    _StatCard(stat: currentStat),
+                    const SizedBox(height: 12),
+                    _NextLevelInfo(stat: currentStat),
+                    const SizedBox(height: 20),
+                  ],
                 ],
               ),
             ),
+          ),
+
+          // 하단 슬롯
+          _CharacterSlots(
+            characters: characters,
+            currentIndex: _currentPage,
+            onTap: (i) => _pageController.animateToPage(i,
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildError(AdventureProvider adventure) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.error_outline, color: Colors.grey, size: 40),
+          const SizedBox(height: 12),
+          const Text('캐릭터 정보를 불러올 수 없습니다.',
+              style: TextStyle(color: Colors.grey)),
+          if (adventure.error != null)
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(adventure.error!,
+                  style: const TextStyle(color: Colors.red, fontSize: 12),
+                  textAlign: TextAlign.center),
+            ),
+          const SizedBox(height: 12),
+          TextButton.icon(
+            onPressed: () => adventure.loadStages(),
+            icon: const Icon(Icons.refresh),
+            label: const Text('다시 시도'),
           ),
         ],
       ),
@@ -177,7 +204,6 @@ class _CharacterScreenState extends State<CharacterScreen> {
   Future<void> _onSelectCharacter(int statId) async {
     final adventure = context.read<AdventureProvider>();
     if (adventure.activeCharacter?.statId == statId) return;
-
     await adventure.selectCharacter(statId);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -186,9 +212,9 @@ class _CharacterScreenState extends State<CharacterScreen> {
           SizedBox(width: 8),
           Text('캐릭터가 변경되었습니다.'),
         ]),
+        backgroundColor: const Color(0xFF6C47FF),
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         duration: const Duration(seconds: 2),
       ));
@@ -196,63 +222,7 @@ class _CharacterScreenState extends State<CharacterScreen> {
   }
 }
 
-class _CurrencyBar extends StatelessWidget {
-  final CurrencyProvider currency;
-  const _CurrencyBar({required this.currency});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        border: Border(
-            bottom: BorderSide(color: Colors.grey.withOpacity(0.15))),
-      ),
-      child: Row(
-        children: [
-          _Chip('🪙', currency.gold, const Color(0xFFFFB300)),
-          const SizedBox(width: 16),
-          _Chip('👟', currency.shoeCoin, const Color(0xFF42A5F5)),
-          const Spacer(),
-          if (currency.isLoading)
-            const SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(strokeWidth: 2)),
-        ],
-      ),
-    );
-  }
-}
-
-class _Chip extends StatelessWidget {
-  final String icon;
-  final int value;
-  final Color color;
-  const _Chip(this.icon, this.value, this.color);
-
-  String _fmt(int n) {
-    if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
-    if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}K';
-    return n.toString();
-  }
-
-  @override
-  Widget build(BuildContext context) => Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Text(icon, style: const TextStyle(fontSize: 18)),
-      const SizedBox(width: 6),
-      Text(_fmt(value),
-          style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: color)),
-    ],
-  );
-}
-
+// ── 레벨 바 ──
 class _LevelBar extends StatelessWidget {
   final CharacterStatModel stat;
   const _LevelBar({required this.stat});
@@ -260,46 +230,66 @@ class _LevelBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.deepPurple.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.deepPurple.withOpacity(0.2)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF6C47FF).withOpacity(0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          )
+        ],
       ),
       child: Row(
         children: [
           Container(
-            padding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
-              color: Colors.deepPurple,
-              borderRadius: BorderRadius.circular(20),
+              gradient: const LinearGradient(
+                colors: [Color(0xFF6C47FF), Color(0xFF9B79FF)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(12),
             ),
-            child: Text('LV ${stat.level}',
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14)),
+            child: Center(
+              child: Text('${stat.level}',
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18)),
+            ),
           ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Lv.${stat.level}',
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 13)),
+                    Text('${stat.exp} / ${stat.requiredExp} EXP',
+                        style: TextStyle(
+                            fontSize: 11, color: Colors.grey.shade500)),
+                  ],
+                ),
+                const SizedBox(height: 6),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(6),
                   child: LinearProgressIndicator(
                     value: stat.expProgress,
-                    minHeight: 14,
-                    backgroundColor: Colors.grey.withOpacity(0.2),
+                    minHeight: 10,
+                    backgroundColor: Colors.grey.withOpacity(0.15),
                     valueColor: const AlwaysStoppedAnimation(
-                        Colors.deepPurple),
+                        Color(0xFF6C47FF)),
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text('${stat.exp} / ${stat.requiredExp} EXP',
-                    style: const TextStyle(
-                        fontSize: 11, color: Colors.grey)),
               ],
             ),
           ),
@@ -309,109 +299,141 @@ class _LevelBar extends StatelessWidget {
   }
 }
 
-// 캐릭터 카드 — Stack 대신 Column 으로 겹침 방지
+// ── 캐릭터 카드 (가로 레이아웃) ──
 class _CharacterCard extends StatelessWidget {
   final CharacterStatModel stat;
-  final bool isSelected;
   final VoidCallback onSelect;
+  final String theme;
 
   const _CharacterCard({
     required this.stat,
-    required this.isSelected,
     required this.onSelect,
+    required this.theme,
   });
 
   String get _emoji {
-    switch (stat.imageKey) {
-      case 'char_dragon': return '🐉';
-      case 'char_knight': return '⚔️';
+    switch (theme) {
+      case 'dragon': return '🐉';
+      case 'knight': return '⚔️';
       default: return '🐻';
+    }
+  }
+
+  Color get _color {
+    switch (theme) {
+      case 'dragon': return const Color(0xFFFF6B35);
+      case 'knight': return const Color(0xFF2196F3);
+      default: return const Color(0xFF6C47FF);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      margin: EdgeInsets.symmetric(
-          horizontal: 8, vertical: isSelected ? 0 : 20),
-      decoration: BoxDecoration(
-        color: isSelected
-            ? Colors.deepPurple.withOpacity(0.08)
-            : Colors.grey.withOpacity(0.04),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isSelected
-              ? Colors.deepPurple.withOpacity(0.4)
-              : Colors.grey.withOpacity(0.15),
-          width: isSelected ? 2 : 1,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: _color.withOpacity(0.12),
+              blurRadius: 20,
+              offset: const Offset(0, 6),
+            )
+          ],
+          border: Border.all(color: _color.withOpacity(0.2), width: 1.5),
         ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        padding: const EdgeInsets.all(18),
+        child: Row(
           children: [
-            // 활성 표시 뱃지
-            if (stat.isActive)
-              Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 3),
-                decoration: BoxDecoration(
-                  color: Colors.green,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Text('사용 중',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold)),
-              )
-            else
-              const SizedBox(height: 22), // 뱃지 높이만큼 공간 유지
-            const SizedBox(height: 8),
-
-            // 캐릭터 이모지
-            Text(_emoji, style: const TextStyle(fontSize: 64)),
-            const SizedBox(height: 8),
-
-            // 이름
-            Text(stat.characterName,
-                style: const TextStyle(
-                    fontWeight: FontWeight.bold, fontSize: 15)),
-            const SizedBox(height: 4),
-
-            // 레벨 뱃지
+            // 캐릭터 이미지
             Container(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 10, vertical: 3),
+              width: 100,
+              height: 100,
               decoration: BoxDecoration(
-                color: Colors.deepPurple,
-                borderRadius: BorderRadius.circular(12),
+                color: _color.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(20),
               ),
-              child: Text('Lv.${stat.level}',
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold)),
+              child: Center(
+                child: Text(_emoji,
+                    style: const TextStyle(fontSize: 56)),
+              ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(width: 16),
 
-            // 선택 버튼 (활성 아닐 때만, 선택된 카드일 때만)
-            if (!stat.isActive && isSelected)
-              FilledButton(
-                onPressed: onSelect,
-                style: FilledButton.styleFrom(
-                  backgroundColor: Colors.deepPurple,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 20, vertical: 8),
-                  minimumSize: const Size(120, 36),
-                ),
-                child: const Text('이 캐릭터 사용',
-                    style: TextStyle(fontSize: 13)),
-              )
-            else
-              const SizedBox(height: 36), // 버튼 높이만큼 공간 유지
+            // 정보
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (stat.isActive)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      margin: const EdgeInsets.only(bottom: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                            color: Colors.green.withOpacity(0.3)),
+                      ),
+                      child: const Text('✅ 사용 중',
+                          style: TextStyle(
+                              color: Colors.green,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold)),
+                    ),
+                  Text(stat.characterName,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 18)),
+                  const SizedBox(height: 4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: _color.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text('Lv.${stat.level}',
+                        style: TextStyle(
+                            color: _color,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12)),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(children: [
+                    _Mini('⚔️', '${stat.atk}'),
+                    const SizedBox(width: 10),
+                    _Mini('🛡️', '${stat.def}'),
+                    const SizedBox(width: 10),
+                    _Mini('❤️', '${stat.maxHp}'),
+                  ]),
+                  if (!stat.isActive) ...[
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: onSelect,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _color,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10)),
+                          elevation: 0,
+                        ),
+                        child: const Text('이 캐릭터 사용',
+                            style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -419,6 +441,25 @@ class _CharacterCard extends StatelessWidget {
   }
 }
 
+class _Mini extends StatelessWidget {
+  final String icon;
+  final String value;
+  const _Mini(this.icon, this.value);
+
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Text(icon, style: const TextStyle(fontSize: 12)),
+      const SizedBox(width: 2),
+      Text(value,
+          style: const TextStyle(
+              fontSize: 12, fontWeight: FontWeight.w600)),
+    ],
+  );
+}
+
+// ── 스탯 카드 ──
 class _StatCard extends StatelessWidget {
   final CharacterStatModel stat;
   const _StatCard({required this.stat});
@@ -428,90 +469,132 @@ class _StatCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.withOpacity(0.15)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text('스탯',
-              style: TextStyle(
-                  fontWeight: FontWeight.bold, fontSize: 15)),
+              style:
+              TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
           const SizedBox(height: 16),
-          _StatRow('⚔️', '공격력', stat.atk, Colors.orange),
-          const Divider(height: 20),
-          _StatRow('🛡️', '방어력', stat.def, Colors.blue),
-          const Divider(height: 20),
-          _StatRow('❤️', 'HP', stat.maxHp, Colors.red),
+          _Bar('⚔️', '공격력', stat.atk, 40, const Color(0xFFFF6B35)),
+          const SizedBox(height: 12),
+          _Bar('🛡️', '방어력', stat.def, 20, const Color(0xFF2196F3)),
+          const SizedBox(height: 12),
+          _Bar('❤️', 'HP', stat.maxHp, 200, const Color(0xFFE91E63)),
         ],
       ),
     );
   }
 }
 
-class _StatRow extends StatelessWidget {
+class _Bar extends StatelessWidget {
   final String icon;
   final String label;
   final int value;
+  final int max;
   final Color color;
-  const _StatRow(this.icon, this.label, this.value, this.color);
+  const _Bar(this.icon, this.label, this.value, this.max, this.color);
 
   @override
-  Widget build(BuildContext context) => Row(
-    children: [
-      Text(icon, style: const TextStyle(fontSize: 20)),
-      const SizedBox(width: 12),
-      Text(label,
-          style: const TextStyle(
-              fontSize: 14, fontWeight: FontWeight.w500)),
-      const Spacer(),
-      Text('$value',
-          style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: color)),
-    ],
-  );
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(children: [
+              Text(icon, style: const TextStyle(fontSize: 16)),
+              const SizedBox(width: 8),
+              Text(label,
+                  style: const TextStyle(
+                      fontSize: 14, fontWeight: FontWeight.w500)),
+            ]),
+            Text('$value',
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: color)),
+          ],
+        ),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: (value / max).clamp(0.0, 1.0),
+            minHeight: 6,
+            backgroundColor: Colors.grey.withOpacity(0.12),
+            valueColor: AlwaysStoppedAnimation(color),
+          ),
+        ),
+      ],
+    );
+  }
 }
 
+// ── 레벨업 안내 ──
 class _NextLevelInfo extends StatelessWidget {
   final CharacterStatModel stat;
   const _NextLevelInfo({required this.stat});
 
   @override
   Widget build(BuildContext context) {
-    final remaining = stat.requiredExp - stat.exp;
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.amber.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.amber.withOpacity(0.3)),
+        gradient: LinearGradient(
+          colors: [
+            const Color(0xFF6C47FF).withOpacity(0.08),
+            const Color(0xFF9B79FF).withOpacity(0.03),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+            color: const Color(0xFF6C47FF).withOpacity(0.15)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          const Text('다음 레벨업까지',
-              style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.amber,
-                  fontWeight: FontWeight.w600)),
-          const SizedBox(height: 4),
-          Text('EXP $remaining 남음',
-              style: const TextStyle(
-                  fontSize: 15, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 2),
-          Text('Lv.${stat.level + 1} 달성 시: ⚔️ +2  🛡️ +1  ❤️ +10',
-              style: const TextStyle(
-                  fontSize: 12, color: Colors.grey)),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF6C47FF).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Text('⬆️', style: TextStyle(fontSize: 20)),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                    'Lv.${stat.level + 1} 까지 EXP ${stat.requiredExp - stat.exp} 남음',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 14)),
+                const SizedBox(height: 2),
+                Text('레벨업 시 ⚔️ +2  🛡️ +1  ❤️ +10',
+                    style: TextStyle(
+                        fontSize: 12, color: Colors.grey.shade600)),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
+// ── 하단 캐릭터 슬롯 ──
 class _CharacterSlots extends StatelessWidget {
   final List<CharacterStatModel> characters;
   final int currentIndex;
@@ -534,11 +617,16 @@ class _CharacterSlots extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        border: Border(
-            top: BorderSide(color: Colors.grey.withOpacity(0.15))),
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 12,
+            offset: const Offset(0, -4),
+          )
+        ],
       ),
       child: Row(
         children: List.generate(characters.length, (i) {
@@ -548,17 +636,17 @@ class _CharacterSlots extends StatelessWidget {
             onTap: () => onTap(i),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              width: 56,
-              height: 56,
+              width: 60,
+              height: 60,
               margin: const EdgeInsets.only(right: 10),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? Colors.deepPurple.withOpacity(0.1)
+                    ? const Color(0xFF6C47FF).withOpacity(0.1)
                     : Colors.grey.withOpacity(0.06),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                   color: isSelected
-                      ? Colors.deepPurple
+                      ? const Color(0xFF6C47FF)
                       : Colors.grey.withOpacity(0.2),
                   width: isSelected ? 2 : 1,
                 ),
@@ -571,12 +659,14 @@ class _CharacterSlots extends StatelessWidget {
                   ),
                   if (c.isActive)
                     Positioned(
-                      bottom: 2, right: 2,
+                      bottom: 4, right: 4,
                       child: Container(
                         width: 10, height: 10,
-                        decoration: const BoxDecoration(
+                        decoration: BoxDecoration(
                           color: Colors.green,
                           shape: BoxShape.circle,
+                          border:
+                          Border.all(color: Colors.white, width: 1.5),
                         ),
                       ),
                     ),

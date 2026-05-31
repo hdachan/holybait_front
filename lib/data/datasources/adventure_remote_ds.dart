@@ -10,7 +10,6 @@ class AdventureRemoteDataSource {
     return (res.data as List).map((e) => StageModel.fromJson(e)).toList();
   }
 
-  // 내 모든 캐릭터
   Future<List<CharacterStatModel>> getMyCharacters() async {
     final res = await _dio.get('/adventures/characters');
     return (res.data as List)
@@ -18,17 +17,31 @@ class AdventureRemoteDataSource {
         .toList();
   }
 
-  // 현재 활성 캐릭터
   Future<CharacterStatModel> getActiveCharacter() async {
     final res = await _dio.get('/adventures/character');
     return CharacterStatModel.fromJson(res.data);
   }
 
-  // 캐릭터 변경
   Future<CharacterStatModel> selectCharacter(int statId) async {
     final res = await _dio.post('/adventures/character/select',
         queryParameters: {'statId': statId});
     return CharacterStatModel.fromJson(res.data);
+  }
+
+  // 미수령 배틀 조회 — 없으면 null 반환 (204 No Content)
+  Future<BattleStartResult?> getPendingBattle() async {
+    try {
+      final res = await _dio.get('/adventures/pending');
+      if (res.statusCode == 204 || res.data == null) return null;
+      return BattleStartResult.fromJson(res.data as Map<String, dynamic>);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // 배틀 포기
+  Future<void> abandonBattle(int battleId) async {
+    await _dio.delete('/adventures/$battleId/abandon');
   }
 
   Future<BattleStartResult> startBattle(int stageId) async {
