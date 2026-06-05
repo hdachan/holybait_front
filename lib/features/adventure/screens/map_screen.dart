@@ -19,12 +19,10 @@ class _MapScreenState extends State<MapScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final provider = context.read<AdventureProvider>();
       await provider.loadStages();
-      // 미수령 배틀 체크
       await _checkPendingBattle();
     });
   }
 
-  // 미수령 배틀 체크 — 있으면 팝업
   Future<void> _checkPendingBattle() async {
     final provider = context.read<AdventureProvider>();
     final pending = await provider.checkPendingBattle();
@@ -63,7 +61,6 @@ class _MapScreenState extends State<MapScreen> {
     if (!mounted) return;
 
     if (action == 'resume') {
-      // 배틀 화면으로 이동 (처음부터 재생)
       provider.currentBattle = pending;
       Navigator.push(
         context,
@@ -74,7 +71,6 @@ class _MapScreenState extends State<MapScreen> {
         context.read<CurrencyProvider>().load();
       });
     } else if (action == 'abandon') {
-      // 포기
       await provider.abandonBattle(pending.battleId);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -88,21 +84,56 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
+  String _fmt(int n) {
+    if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
+    if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}K';
+    return n.toString();
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AdventureProvider>();
     final currency = context.watch<CurrencyProvider>();
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF2F1FA),
       appBar: AppBar(
-        title: const Text('맵 선택'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        automaticallyImplyLeading: false,
+        title: const Text('맵 선택',
+            style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                color: Colors.black)),
         centerTitle: true,
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: Row(children: [
+              const Text('🪙', style: TextStyle(fontSize: 14)),
+              const SizedBox(width: 3),
+              Text(_fmt(currency.gold),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFFFFB300),
+                      fontSize: 13)),
+              const SizedBox(width: 10),
+              const Text('👟', style: TextStyle(fontSize: 14)),
+              const SizedBox(width: 3),
+              Text(_fmt(currency.shoeCoin),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF42A5F5),
+                      fontSize: 13)),
+            ]),
+          ),
+        ],
       ),
       body: provider.isLoading
           ? const Center(child: CircularProgressIndicator())
           : Column(
         children: [
-          _CoinBar(currency: currency),
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Text(
@@ -147,8 +178,7 @@ class _MapScreenState extends State<MapScreen> {
 
     if (currency.shoeCoin < stage.shoeCoinCost) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content:
-        Text('신발코인이 부족합니다. (보유: ${currency.shoeCoin}개)'),
+        content: Text('신발코인이 부족합니다. (보유: ${currency.shoeCoin}개)'),
         backgroundColor: Colors.red,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
@@ -224,64 +254,6 @@ class _MapScreenState extends State<MapScreen> {
   }
 }
 
-class _CoinBar extends StatelessWidget {
-  final CurrencyProvider currency;
-  const _CoinBar({required this.currency});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        border: Border(
-            bottom:
-            BorderSide(color: Colors.grey.withOpacity(0.15))),
-      ),
-      child: Row(
-        children: [
-          _Chip('🪙', currency.gold, const Color(0xFFFFB300)),
-          const SizedBox(width: 20),
-          _Chip('👟', currency.shoeCoin, const Color(0xFF42A5F5)),
-          const Spacer(),
-          if (currency.isLoading)
-            const SizedBox(
-                width: 14,
-                height: 14,
-                child: CircularProgressIndicator(strokeWidth: 2)),
-        ],
-      ),
-    );
-  }
-}
-
-class _Chip extends StatelessWidget {
-  final String icon;
-  final int value;
-  final Color color;
-  const _Chip(this.icon, this.value, this.color);
-
-  String _fmt(int n) {
-    if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
-    if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}K';
-    return n.toString();
-  }
-
-  @override
-  Widget build(BuildContext context) => Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Text(icon, style: const TextStyle(fontSize: 18)),
-      const SizedBox(width: 6),
-      Text(_fmt(value),
-          style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.bold,
-              color: color)),
-    ],
-  );
-}
-
 class _StageCard extends StatelessWidget {
   final StageModel stage;
   final int characterLevel;
@@ -328,8 +300,7 @@ class _StageCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: isLocked
-                    ? const Icon(Icons.lock,
-                    color: Colors.grey, size: 28)
+                    ? const Icon(Icons.lock, color: Colors.grey, size: 28)
                     : const Icon(Icons.forest_rounded,
                     color: Colors.deepPurple, size: 32),
               ),
@@ -376,8 +347,7 @@ class _StageCard extends StatelessWidget {
                                   ? Colors.orange
                                   : Colors.red,
                               fontSize: 13)),
-                      Text(
-                          '  Lv.${stage.minLevel}~${stage.maxLevel}',
+                      Text('  Lv.${stage.minLevel}~${stage.maxLevel}',
                           style: const TextStyle(
                               color: Colors.grey, fontSize: 12)),
                     ]),
