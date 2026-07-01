@@ -73,6 +73,28 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  // 닉네임 수정 — 성공 시 true, 실패 시 false 반환
+  Future<bool> updateNickname(String nickname) async {
+    try {
+      final updated = await _repository.updateNickname(nickname);
+      _user = updated;
+      notifyListeners();
+      return true;
+    } on DioException catch (e) {
+      // 서버에서 보낸 에러 메시지(닉네임 길이 등) 있으면 사용
+      final serverMsg = e.response?.data is Map
+          ? e.response?.data['message']
+          : null;
+      _errorMessage = serverMsg ?? '닉네임 변경에 실패했습니다.';
+      notifyListeners();
+      return false;
+    } catch (_) {
+      _errorMessage = '닉네임 변경에 실패했습니다.';
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<void> logout() async {
     _set(AuthStatus.loading);
     try {

@@ -21,6 +21,14 @@ class AuthRemoteDataSource {
     return UserModel.fromJson(res.data);
   }
 
+  // 닉네임 수정 — GET /auth/me 와 같은 경로의 PATCH
+  Future<UserModel> updateNickname(String nickname) async {
+    final res = await _dio.patch(ApiConstants.me, data: {
+      'nickname': nickname,
+    });
+    return UserModel.fromJson(res.data);
+  }
+
   Future<void> logout(String refreshToken) async {
     await _dio.post(ApiConstants.logout, data: {
       'refreshToken': refreshToken,

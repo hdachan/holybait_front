@@ -44,6 +44,10 @@ class AuthRepository {
 
   Future<UserModel> getMe() => _remote.getMe();
 
+  // 닉네임 수정
+  Future<UserModel> updateNickname(String nickname) =>
+      _remote.updateNickname(nickname);
+
   Future<void> logout() async {
     final refreshToken = await _local.getRefreshToken();
     if (refreshToken != null) await _remote.logout(refreshToken);
