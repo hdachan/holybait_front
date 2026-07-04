@@ -5,6 +5,7 @@ import 'features/auth/provider/auth_provider.dart';
 import 'features/main/provider/main_provider.dart';
 import 'features/routine/provider/routine_provider.dart';
 import 'features/currency/provider/currency_provider.dart';
+import 'features/step/step_provider.dart';
 import 'router.dart';
 
 void main() {
@@ -23,6 +24,7 @@ class HolyHabitApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => RoutineProvider()),
         ChangeNotifierProvider(create: (_) => CurrencyProvider()), // 추가
         ChangeNotifierProvider(create: (_) => AdventureProvider()), // 추가
+        ChangeNotifierProvider(create: (_) => StepProvider()),
       ],
       child: MaterialApp.router(
         title: 'HolyHabit',

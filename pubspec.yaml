@@ -28,6 +28,10 @@ dependencies:
   url_launcher: ^6.2.5
   package_info_plus: ^8.0.0
 
+  #만보개
+  pedometer: ^4.1.1
+  shared_preferences: ^2.2.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
