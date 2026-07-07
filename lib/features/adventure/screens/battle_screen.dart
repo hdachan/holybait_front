@@ -176,7 +176,23 @@ class _BattleScreenState extends State<BattleScreen>
       return;
     }
     context.read<CurrencyProvider>().load();
+
+    // 1. 결과 다이얼로그
     await _showResultDialog(result);
+    if (!mounted) return;
+
+    // 2. 레벨업 연출 (레벨업 했을 때만)
+    if (result.levelsGained > 0) {
+      await _showLevelUpDialog(result);
+      if (!mounted) return;
+    }
+
+    // 3. 캐릭터 드롭 팝업 (드롭 됐을 때만)
+    if (result.hasDroppedCharacter) {
+      await _showDropDialog(result);
+      if (!mounted) return;
+    }
+
     if (mounted) Navigator.pop(context);
   }
 
@@ -197,8 +213,10 @@ class _BattleScreenState extends State<BattleScreen>
               _rewardRow('✨ 경험치', '+${result.expGained} EXP'),
               _rewardRow('💰 골드', '+${result.goldGained} G'),
               if (result.levelsGained > 0)
-                _rewardRow('⬆️ 레벨업',
-                    'Lv.${result.newLevel - result.levelsGained} → Lv.${result.newLevel}',
+                _rewardRow('⬆️ 레벨업', '${result.levelsGained}번!',
+                    highlight: true),
+              if (result.hasDroppedCharacter)
+                _rewardRow('🎁 캐릭터 획득', result.droppedCharacterName!,
                     highlight: true),
             ] else
               const Text('다음엔 더 강해져서 도전하세요!',
@@ -221,8 +239,7 @@ class _BattleScreenState extends State<BattleScreen>
             ),
             const SizedBox(height: 4),
             Text('${result.newExp} / ${result.requiredExp} EXP',
-                style:
-                const TextStyle(fontSize: 11, color: Colors.grey)),
+                style: const TextStyle(fontSize: 11, color: Colors.grey)),
           ],
         ),
         actions: [
@@ -231,6 +248,185 @@ class _BattleScreenState extends State<BattleScreen>
             child: const Text('확인'),
           ),
         ],
+      ),
+    );
+  }
+
+  // 레벨업 연출 다이얼로그
+  Future<void> _showLevelUpDialog(BattleConfirmResult result) async {
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(28),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF2C1654), Color(0xFF1A2A4A)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+                color: Colors.amber.withOpacity(0.6), width: 2),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.amber.withOpacity(0.3),
+                blurRadius: 30,
+                spreadRadius: 5,
+              )
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('⬆️', style: TextStyle(fontSize: 52)),
+              const SizedBox(height: 12),
+              const Text('LEVEL UP!',
+                  style: TextStyle(
+                      color: Colors.amber,
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 2)),
+              const SizedBox(height: 16),
+              Text(
+                'Lv.${result.newLevel - result.levelsGained} → Lv.${result.newLevel}',
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  children: [
+                    _statRow('⚔️ 공격력', result.newAtk),
+                    const SizedBox(height: 6),
+                    _statRow('🛡️ 방어력', result.newDef),
+                    const SizedBox(height: 6),
+                    _statRow('❤️ 최대 HP', result.newMaxHp),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.amber,
+                  foregroundColor: Colors.black,
+                  minimumSize: const Size(double.infinity, 46),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Text('계속하기',
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 15)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _statRow(String label, int value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label,
+            style: const TextStyle(color: Colors.white70, fontSize: 13)),
+        Text('$value',
+            style: const TextStyle(
+                color: Colors.amber,
+                fontWeight: FontWeight.bold,
+                fontSize: 13)),
+      ],
+    );
+  }
+
+  // 캐릭터 드롭 팝업
+  Future<void> _showDropDialog(BattleConfirmResult result) async {
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(28),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF1A3A2A), Color(0xFF0D1F0D)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+                color: Colors.greenAccent.withOpacity(0.6), width: 2),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.greenAccent.withOpacity(0.3),
+                blurRadius: 30,
+                spreadRadius: 5,
+              )
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('🎁', style: TextStyle(fontSize: 52)),
+              const SizedBox(height: 12),
+              const Text('캐릭터 획득!',
+                  style: TextStyle(
+                      color: Colors.greenAccent,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              const Text('새로운 캐릭터를 획득했어요!',
+                  style:
+                  TextStyle(color: Colors.white70, fontSize: 14)),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 20, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  result.droppedCharacterName ?? '',
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold),
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text('캐릭터 화면에서 확인해보세요',
+                  style:
+                  TextStyle(color: Colors.white54, fontSize: 12)),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.greenAccent,
+                  foregroundColor: Colors.black,
+                  minimumSize: const Size(double.infinity, 46),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Text('확인',
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 15)),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

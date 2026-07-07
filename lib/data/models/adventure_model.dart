@@ -139,22 +139,44 @@ class BattleConfirmResult {
   final int newAtk;
   final int newDef;
   final int newMaxHp;
+  final String? droppedCharacterName;
+  final String? droppedCharacterImageKey;
 
   BattleConfirmResult({
     required this.result, required this.expGained, required this.goldGained,
     required this.levelsGained, required this.newLevel, required this.newExp,
     required this.requiredExp, required this.newAtk, required this.newDef,
     required this.newMaxHp,
+    this.droppedCharacterName,
+    this.droppedCharacterImageKey,
   });
 
   bool get isWin => result == 'WIN';
+  bool get hasDroppedCharacter => droppedCharacterName != null;
 
   factory BattleConfirmResult.fromJson(Map<String, dynamic> json) =>
       BattleConfirmResult(
         result: json['result'], expGained: json['expGained'] ?? 0,
-        goldGained: json['goldGained'] ?? 0, levelsGained: json['levelsGained'] ?? 0,
+        goldGained: json['goldGained'] ?? 0,
+        levelsGained: json['levelsGained'] ?? 0,
         newLevel: json['newLevel'], newExp: json['newExp'],
         requiredExp: json['requiredExp'], newAtk: json['newAtk'],
         newDef: json['newDef'], newMaxHp: json['newMaxHp'],
+        droppedCharacterName: json['droppedCharacterName'],
+        droppedCharacterImageKey: json['droppedCharacterImageKey'],
+      );
+}
+
+// 미수령 배틀 응답 (맵 화면 진입 시)
+class PendingBattleModel {
+  final int battleId;
+  final String monsterName;
+
+  PendingBattleModel({required this.battleId, required this.monsterName});
+
+  factory PendingBattleModel.fromJson(Map<String, dynamic> json) =>
+      PendingBattleModel(
+        battleId: json['battleId'],
+        monsterName: json['monsterName'],
       );
 }
