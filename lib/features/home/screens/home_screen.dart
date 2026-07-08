@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../routine/provider/routine_provider.dart';
 import '../../routine/screens/routine_form_screen.dart';
+import '../../routine/screens/workout_history_screen.dart';
+
 import '../../currency/provider/currency_provider.dart';
 import '../../../data/models/routine_model.dart';
 import '../../step/step_provider.dart';
@@ -90,32 +92,72 @@ class _RoutineTab extends StatelessWidget {
     return provider.isLoading
         ? const Center(child: CircularProgressIndicator())
         : provider.routines.isEmpty
-        ? _buildEmpty()
-        : _buildList(provider.routines);
+        ? _buildEmpty(context)
+        : _buildList(context, provider.routines);
   }
 
-  Widget _buildEmpty() {
-    return const Center(
+  Widget _buildEmpty(BuildContext context) {
+    return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.fitness_center, size: 64, color: Colors.grey),
-          SizedBox(height: 16),
-          Text('루틴을 추가해주세요',
+          const Icon(Icons.fitness_center, size: 64, color: Colors.grey),
+          const SizedBox(height: 16),
+          const Text('루틴을 추가해주세요',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          SizedBox(height: 8),
-          Text('나만의 완벽한 운동 루틴을 만들어보세요.',
+          const SizedBox(height: 8),
+          const Text('나만의 완벽한 운동 루틴을 만들어보세요.',
               style: TextStyle(color: Colors.grey)),
         ],
       ),
     );
   }
 
-  Widget _buildList(List<RoutineModel> routines) {
-    return ListView.builder(
+  Widget _buildList(BuildContext context, List<RoutineModel> routines) {
+    return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      itemCount: routines.length,
-      itemBuilder: (_, i) => _RoutineCard(routine: routines[i]),
+      children: [
+        // 전체 기록 보기 버튼
+        GestureDetector(
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (_) => const WorkoutHistoryScreen()),
+          ),
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.symmetric(
+                horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.blue.withOpacity(0.2)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.03),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                )
+              ],
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.history_rounded, color: Colors.blue, size: 20),
+                SizedBox(width: 10),
+                Text('전체 운동 기록 보기',
+                    style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.blue)),
+                Spacer(),
+                Icon(Icons.chevron_right, color: Colors.blue, size: 20),
+              ],
+            ),
+          ),
+        ),
+        // 루틴 목록
+        ...routines.map((routine) => _RoutineCard(routine: routine)),
+      ],
     );
   }
 }

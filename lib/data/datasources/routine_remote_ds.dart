@@ -3,6 +3,8 @@ import '../../core/network/api_client.dart';
 import '../models/routine_model.dart';
 import '../models/exercise_model.dart';
 import '../models/workout_model.dart';
+import '../../features/routine/screens/workout_history_screen.dart';
+import '../../features/routine/screens/workout_history_detail_screen.dart';
 
 class RoutineRemoteDataSource {
   final Dio _dio = ApiClient.dio;
@@ -64,7 +66,6 @@ class RoutineRemoteDataSource {
     return ExerciseModel.fromJson(res.data);
   }
 
-  // isSuperset, isSupersetFirst 제거 — 서버에서 각 운동 독립 계산
   Future<WorkoutSaveResult> saveWorkout(
       int routineExerciseId,
       List<Map<String, dynamic>> sets,
@@ -76,10 +77,27 @@ class RoutineRemoteDataSource {
     return WorkoutSaveResult.fromJson(res.data);
   }
 
-  // RecentSetsResponse 반환 — loggedAt 최상위 포함
   Future<RecentSetsResponse?> getRecentSets(int routineExerciseId) async {
     final res = await _dio.get('/workouts/recent/$routineExerciseId');
     if (res.data == null) return null;
     return RecentSetsResponse.fromJson(res.data as Map<String, dynamic>);
+  }
+
+  // 내가 운동한 종목 목록
+  Future<List<WorkoutHistoryModel>> getExerciseHistory() async {
+    final res = await _dio.get('/workouts/exercises');
+    return (res.data as List)
+        .map((e) => WorkoutHistoryModel.fromJson(e))
+        .toList();
+  }
+
+  // 특정 종목 날짜별 기록
+  Future<List<WorkoutHistoryDetailModel>> getExerciseDetail(
+      int exerciseId) async {
+    final res =
+    await _dio.get('/workouts/exercises/$exerciseId/history');
+    return (res.data as List)
+        .map((e) => WorkoutHistoryDetailModel.fromJson(e))
+        .toList();
   }
 }

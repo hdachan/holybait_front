@@ -2,6 +2,8 @@ import '../datasources/routine_remote_ds.dart';
 import '../models/routine_model.dart';
 import '../models/exercise_model.dart';
 import '../models/workout_model.dart';
+import '../../features/routine/screens/workout_history_screen.dart';
+import '../../features/routine/screens/workout_history_detail_screen.dart';
 
 class RoutineRepository {
   final _remote = RoutineRemoteDataSource();
@@ -29,14 +31,20 @@ class RoutineRepository {
   Future<ExerciseModel> createCustomExercise(String name, String target) =>
       _remote.createCustomExercise(name, target);
 
-  // isSuperset, isSupersetFirst 제거
   Future<WorkoutSaveResult> saveWorkout(
       int routineExerciseId,
       List<Map<String, dynamic>> sets,
       ) =>
       _remote.saveWorkout(routineExerciseId, sets);
 
-  // nullable RecentSetsResponse 반환 (기록 없으면 null)
   Future<RecentSetsResponse?> getRecentSets(int routineExerciseId) =>
       _remote.getRecentSets(routineExerciseId);
+
+  // 운동 기록 — 종목 목록
+  Future<List<WorkoutHistoryModel>> getExerciseHistory() =>
+      _remote.getExerciseHistory();
+
+  // 운동 기록 — 특정 종목 날짜별 상세
+  Future<List<WorkoutHistoryDetailModel>> getExerciseDetail(int exerciseId) =>
+      _remote.getExerciseDetail(exerciseId);
 }
