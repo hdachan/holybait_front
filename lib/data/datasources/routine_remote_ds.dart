@@ -5,7 +5,6 @@ import '../models/exercise_model.dart';
 import '../models/workout_model.dart';
 import '../../features/routine/screens/workout_history_screen.dart';
 import '../../features/routine/screens/workout_history_detail_screen.dart';
-
 class RoutineRemoteDataSource {
   final Dio _dio = ApiClient.dio;
 
@@ -81,6 +80,12 @@ class RoutineRemoteDataSource {
     final res = await _dio.get('/workouts/recent/$routineExerciseId');
     if (res.data == null) return null;
     return RecentSetsResponse.fromJson(res.data as Map<String, dynamic>);
+  }
+
+  // 운동 통계
+  Future<WorkoutSummaryModel> getWorkoutSummary() async {
+    final res = await _dio.get('/workouts/summary');
+    return WorkoutSummaryModel.fromJson(res.data);
   }
 
   // 내가 운동한 종목 목록

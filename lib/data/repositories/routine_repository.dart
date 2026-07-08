@@ -40,6 +40,10 @@ class RoutineRepository {
   Future<RecentSetsResponse?> getRecentSets(int routineExerciseId) =>
       _remote.getRecentSets(routineExerciseId);
 
+  // 운동 통계
+  Future<WorkoutSummaryModel> getWorkoutSummary() =>
+      _remote.getWorkoutSummary();
+
   // 운동 기록 — 종목 목록
   Future<List<WorkoutHistoryModel>> getExerciseHistory() =>
       _remote.getExerciseHistory();
