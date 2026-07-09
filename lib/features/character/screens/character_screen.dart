@@ -258,6 +258,7 @@ class _CharacterScreenState extends State<CharacterScreen> {
                 _BottomSlots(
                   characters: characters,
                   currentIndex: _currentPage,
+                  totalSlots: adventure.slotCount,
                   thumbAsset: _thumbAsset,
                   themeColor: _themeColor,
                   hasSprites: _hasSprites,
@@ -362,7 +363,7 @@ class _SpriteAnimationState extends State<_SpriteAnimation> {
   void _play() {
     _timer?.cancel();
     setState(() => _frame = 0);
-    _timer = Timer.periodic(const Duration(milliseconds: 40), (_) {
+    _timer = Timer.periodic(const Duration(milliseconds: 80), (_) {
       if (!mounted) return;
       setState(() {
         _frame++;
@@ -644,116 +645,227 @@ class _EquipButton extends StatelessWidget {
 class _BottomSlots extends StatelessWidget {
   final List<CharacterStatModel> characters;
   final int currentIndex;
+  final int totalSlots;
   final String Function(String?) thumbAsset;
   final Color Function(String?) themeColor;
   final bool Function(String?) hasSprites;
   final void Function(int) onTap;
-  static const int totalSlots = 4;
 
   const _BottomSlots({
     required this.characters,
     required this.currentIndex,
+    required this.totalSlots,
     required this.thumbAsset,
     required this.themeColor,
     required this.hasSprites,
     required this.onTap,
   });
 
+  void _showExpandDialog(BuildContext context, AdventureProvider adventure) {
+    final currentSlot = adventure.slotCount;
+    final costs = [0, 0, 0, 0, 500, 1000, 1500, 2500, 3500, 5000];
+    final cost = currentSlot < 10 ? costs[currentSlot] : -1;
+
+    if (cost == -1) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('슬롯이 이미 최대입니다.')),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('슬롯 확장'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('슬롯을 ${currentSlot + 1}개로 확장합니다.'),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text('🪙 골드 '),
+                Text('$cost개',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.amber)),
+                const Text(' 소모'),
+              ],
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('취소'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              final result = await adventure.expandSlot();
+              if (!context.mounted) return;
+              if (result != null) {
+                // 골드 즉시 갱신
+                context.read<CurrencyProvider>().load();
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Text('슬롯이 ${result.slotCount}개로 확장되었습니다!'),
+                  backgroundColor: const Color(0xFF4CAF50),
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                  margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                ));
+              } else {
+                // 골드 부족 or 기타 오류 → 팝업
+                final errMsg = adventure.error ?? '';
+                String msg;
+                if (errMsg.contains('골드') || errMsg.contains('403')) {
+                  msg = '골드가 부족합니다.\n모험을 통해 골드를 모아보세요!';
+                } else if (errMsg.contains('최대')) {
+                  msg = '슬롯이 이미 최대입니다.';
+                } else {
+                  msg = '슬롯 확장에 실패했습니다.';
+                }
+                showDialog(
+                  context: context,
+                  builder: (_) => AlertDialog(
+                    title: const Text('슬롯 확장 실패'),
+                    content: Text(msg),
+                    actions: [
+                      FilledButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('확인'),
+                      ),
+                    ],
+                  ),
+                );
+              }
+            },
+            child: const Text('구매'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Row(
-        children: List.generate(totalSlots, (i) {
+    final adventure = context.watch<AdventureProvider>();
+    // 슬롯 수 + 1 (마지막 하나는 구매 버튼, 최대 10개면 추가 안 함)
+    final displayCount = adventure.slotCount < 10
+        ? adventure.slotCount + 1
+        : adventure.slotCount;
+
+    return SizedBox(
+      height: 68,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        itemCount: displayCount,
+        itemBuilder: (context, i) {
           final hasChar = i < characters.length;
           final c = hasChar ? characters[i] : null;
           final isSelected = currentIndex == i;
           final color = themeColor(c?.imageKey);
 
           if (!hasChar) {
-            return Expanded(
+            // i < slotCount → 구매된 빈 슬롯 (그냥 빈 슬롯)
+            // i == slotCount → 구매 가능한 다음 슬롯 (골드 구매 버튼)
+            final isPurchasable = i == adventure.slotCount;
+
+            return GestureDetector(
+              onTap: isPurchasable
+                  ? () => _showExpandDialog(context, adventure)
+                  : null,
               child: Container(
+                width: 68,
                 margin: EdgeInsets.only(left: i == 0 ? 0 : 10),
-                height: 68,
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.85),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                      color: Colors.grey.withOpacity(0.2)),
+                    color: isPurchasable
+                        ? Colors.amber.withOpacity(0.4)
+                        : Colors.grey.withOpacity(0.2),
+                  ),
                 ),
-                child: Icon(Icons.add,
-                    color: Colors.grey.shade400, size: 26),
+                child: Icon(
+                  isPurchasable ? Icons.add_circle_outline : Icons.add,
+                  color: isPurchasable
+                      ? Colors.amber.shade600
+                      : Colors.grey.shade400,
+                  size: 26,
+                ),
               ),
             );
           }
 
-          return Expanded(
-            child: GestureDetector(
-              onTap: () => onTap(i),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                margin: EdgeInsets.only(left: i == 0 ? 0 : 10),
-                height: 68,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.85),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: isSelected
-                        ? color
-                        : Colors.grey.withOpacity(0.2),
-                    width: isSelected ? 2 : 1,
-                  ),
-                  boxShadow: isSelected
-                      ? [
-                    BoxShadow(
-                      color: color.withOpacity(0.15),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    )
-                  ]
-                      : [],
+          return GestureDetector(
+            onTap: () => onTap(i),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 68,
+              margin: EdgeInsets.only(left: i == 0 ? 0 : 10),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.85),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isSelected ? color : Colors.grey.withOpacity(0.2),
+                  width: isSelected ? 2 : 1,
                 ),
-                child: Stack(
-                  children: [
-                    Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(8),
-                        child: hasSprites(c?.imageKey)
-                            ? Image.asset(
-                          thumbAsset(c?.imageKey),
-                          fit: BoxFit.contain,
-                          errorBuilder: (_, __, ___) => Icon(
-                            Icons.person_outline,
-                            color: color.withOpacity(0.4),
-                            size: 30,
-                          ),
-                        )
-                            : Icon(
+                boxShadow: isSelected
+                    ? [
+                  BoxShadow(
+                    color: color.withOpacity(0.15),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  )
+                ]
+                    : [],
+              ),
+              child: Stack(
+                children: [
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: hasSprites(c?.imageKey)
+                          ? Image.asset(
+                        thumbAsset(c?.imageKey),
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) => Icon(
                           Icons.person_outline,
                           color: color.withOpacity(0.4),
                           size: 30,
                         ),
+                      )
+                          : Icon(
+                        Icons.person_outline,
+                        color: color.withOpacity(0.4),
+                        size: 30,
                       ),
                     ),
-                    if (c != null && c.isActive)
-                      Positioned(
-                        top: 4, right: 4,
-                        child: Container(
-                          width: 16, height: 16,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF4CAF50),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(Icons.check,
-                              color: Colors.white, size: 11),
+                  ),
+                  if (c != null && c.isActive)
+                    Positioned(
+                      top: 4,
+                      right: 4,
+                      child: Container(
+                        width: 16,
+                        height: 16,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF4CAF50),
+                          shape: BoxShape.circle,
                         ),
+                        child: const Icon(Icons.check,
+                            color: Colors.white, size: 11),
                       ),
-                  ],
-                ),
+                    ),
+                ],
               ),
             ),
           );
-        }),
+        },
       ),
     );
   }

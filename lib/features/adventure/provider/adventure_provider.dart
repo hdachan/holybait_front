@@ -9,8 +9,9 @@ class AdventureProvider extends ChangeNotifier {
   List<CharacterStatModel> myCharacters = [];
   CharacterStatModel? activeCharacter;
   BattleStartResult? currentBattle;
-  BattleStartResult? pendingBattle;  // 미수령 배틀
+  BattleStartResult? pendingBattle;
   BattleConfirmResult? confirmResult;
+  int slotCount = 4; // 기본 슬롯 수
 
   bool isLoading = false;
   bool isCheckingPending = false;
@@ -20,8 +21,14 @@ class AdventureProvider extends ChangeNotifier {
     isLoading = true;
     notifyListeners();
     try {
-      stages = await _repository.getStages();
-      myCharacters = await _repository.getMyCharacters();
+      final results = await Future.wait([
+        _repository.getStages(),
+        _repository.getMyCharacters(),
+        _repository.getSlotCount(),
+      ]);
+      stages = results[0] as List<StageModel>;
+      myCharacters = results[1] as List<CharacterStatModel>;
+      slotCount = results[2] as int;
       activeCharacter = myCharacters.where((c) => c.isActive).firstOrNull
           ?? (myCharacters.isNotEmpty ? myCharacters.first : null);
     } catch (e) {
@@ -32,7 +39,7 @@ class AdventureProvider extends ChangeNotifier {
     }
   }
 
-  // 미수령 배틀 체크 — 맵 화면 진입 시 호출
+  // 미수령 배틀 체크
   Future<BattleStartResult?> checkPendingBattle() async {
     isCheckingPending = true;
     notifyListeners();
@@ -108,6 +115,20 @@ class AdventureProvider extends ChangeNotifier {
     } finally {
       isLoading = false;
       notifyListeners();
+    }
+  }
+
+  // 슬롯 확장
+  Future<SlotExpandModel?> expandSlot() async {
+    try {
+      final result = await _repository.expandSlot();
+      slotCount = result.slotCount;
+      notifyListeners();
+      return result;
+    } catch (e) {
+      error = e.toString();
+      notifyListeners();
+      return null;
     }
   }
 

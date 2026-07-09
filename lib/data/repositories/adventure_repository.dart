@@ -11,6 +11,8 @@ class AdventureRepository {
       _remote.getActiveCharacter();
   Future<CharacterStatModel> selectCharacter(int statId) =>
       _remote.selectCharacter(statId);
+  Future<int> getSlotCount() => _remote.getSlotCount();
+  Future<SlotExpandModel> expandSlot() => _remote.expandSlot();
   Future<BattleStartResult?> getPendingBattle() =>
       _remote.getPendingBattle();
   Future<void> abandonBattle(int battleId) =>

@@ -28,6 +28,18 @@ class AdventureRemoteDataSource {
     return CharacterStatModel.fromJson(res.data);
   }
 
+  // 슬롯 수 조회
+  Future<int> getSlotCount() async {
+    final res = await _dio.get('/adventures/slots');
+    return res.data as int;
+  }
+
+  // 슬롯 확장 구매
+  Future<SlotExpandModel> expandSlot() async {
+    final res = await _dio.post('/adventures/slots/expand');
+    return SlotExpandModel.fromJson(res.data);
+  }
+
   // 미수령 배틀 조회 — 없으면 null 반환 (204 No Content)
   Future<BattleStartResult?> getPendingBattle() async {
     try {

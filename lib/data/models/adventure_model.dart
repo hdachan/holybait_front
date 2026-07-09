@@ -23,7 +23,7 @@ class StageModel {
 
 // 캐릭터 스탯 (유저별 인스턴스)
 class CharacterStatModel {
-  final int statId;          // character_stats.id (선택 시 사용)
+  final int statId;
   final int characterId;
   final String characterName;
   final String? imageKey;
@@ -178,5 +178,27 @@ class PendingBattleModel {
       PendingBattleModel(
         battleId: json['battleId'],
         monsterName: json['monsterName'],
+      );
+}
+
+// 슬롯 확장 응답
+class SlotExpandModel {
+  final int slotCount;      // 확장 후 슬롯 수
+  final int remainingGold;  // 남은 골드
+  final int nextSlotCost;   // 다음 슬롯 비용 (-1이면 최대)
+
+  SlotExpandModel({
+    required this.slotCount,
+    required this.remainingGold,
+    required this.nextSlotCost,
+  });
+
+  bool get isMaxSlot => nextSlotCost == -1;
+
+  factory SlotExpandModel.fromJson(Map<String, dynamic> json) =>
+      SlotExpandModel(
+        slotCount: json['slotCount'] ?? 4,
+        remainingGold: json['remainingGold'] ?? 0,
+        nextSlotCost: json['nextSlotCost'] ?? -1,
       );
 }
