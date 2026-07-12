@@ -101,34 +101,33 @@ class _MapScreenState extends State<MapScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         automaticallyImplyLeading: false,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 12),
+          child: Row(children: [
+            const Text('🪙', style: TextStyle(fontSize: 13)),
+            const SizedBox(width: 3),
+            Text(_fmt(currency.gold),
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFFFFB300),
+                    fontSize: 12)),
+            const SizedBox(width: 6),
+            const Text('👟', style: TextStyle(fontSize: 13)),
+            const SizedBox(width: 3),
+            Text(_fmt(currency.shoeCoin),
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF42A5F5),
+                    fontSize: 12)),
+          ]),
+        ),
+        leadingWidth: 140,
         title: const Text('맵 선택',
             style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 18,
                 color: Colors.black)),
         centerTitle: true,
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: Row(children: [
-              const Text('🪙', style: TextStyle(fontSize: 14)),
-              const SizedBox(width: 3),
-              Text(_fmt(currency.gold),
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFFFFB300),
-                      fontSize: 13)),
-              const SizedBox(width: 10),
-              const Text('👟', style: TextStyle(fontSize: 14)),
-              const SizedBox(width: 3),
-              Text(_fmt(currency.shoeCoin),
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF42A5F5),
-                      fontSize: 13)),
-            ]),
-          ),
-        ],
       ),
       body: provider.isLoading
           ? const Center(child: CircularProgressIndicator())

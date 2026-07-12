@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import '../../currency/provider/currency_provider.dart';
 import '../../adventure/provider/adventure_provider.dart';
 import '../../../data/models/adventure_model.dart';
+import '../../../core/network/api_client.dart';
+import '../../shop/screens/shop_screen.dart';
 
 class CharacterScreen extends StatefulWidget {
   const CharacterScreen({super.key});
@@ -104,32 +106,61 @@ class _CharacterScreenState extends State<CharacterScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         automaticallyImplyLeading: false,
+        // 왼쪽: 골드 + 신발코인
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 12),
+          child: Row(children: [
+            const Text('🪙', style: TextStyle(fontSize: 13)),
+            const SizedBox(width: 3),
+            Text(_fmt(currency.gold),
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFFFFB300),
+                    fontSize: 12)),
+            const SizedBox(width: 6),
+            const Text('👟', style: TextStyle(fontSize: 13)),
+            const SizedBox(width: 3),
+            Text(_fmt(currency.shoeCoin),
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF42A5F5),
+                    fontSize: 12)),
+          ]),
+        ),
+        leadingWidth: 140,
         title: const Text('캐릭터',
             style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 18,
                 color: Colors.black)),
         centerTitle: true,
+        // 오른쪽: 상점 버튼
         actions: [
           Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: Row(children: [
-              const Text('🪙', style: TextStyle(fontSize: 14)),
-              const SizedBox(width: 3),
-              Text(_fmt(currency.gold),
-                  style: const TextStyle(
+            padding: const EdgeInsets.only(right: 12),
+            child: TextButton.icon(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ShopScreen()),
+              ).then((_) {
+                context.read<CurrencyProvider>().load();
+                context.read<AdventureProvider>().loadStages();
+              }),
+              icon: const Text('🛒', style: TextStyle(fontSize: 16)),
+              label: const Text('상점',
+                  style: TextStyle(
+                      fontSize: 13,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFFFFB300),
-                      fontSize: 13)),
-              const SizedBox(width: 10),
-              const Text('👟', style: TextStyle(fontSize: 14)),
-              const SizedBox(width: 3),
-              Text(_fmt(currency.shoeCoin),
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF42A5F5),
-                      fontSize: 13)),
-            ]),
+                      color: Colors.deepPurple)),
+              style: TextButton.styleFrom(
+                backgroundColor:
+                Colors.deepPurple.withOpacity(0.08),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20)),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 10, vertical: 4),
+              ),
+            ),
           ),
         ],
       ),
@@ -243,6 +274,25 @@ class _CharacterScreenState extends State<CharacterScreen> {
                                               currentStat.statId),
                                     ),
                                   ),
+                                const SizedBox(height: 8),
+
+                                // 삭제 버튼 (착용 중이 아닐 때만)
+                                if (currentStat != null &&
+                                    !currentStat.isActive)
+                                  TextButton.icon(
+                                    onPressed: () =>
+                                        _onDeleteCharacter(
+                                            currentStat),
+                                    icon: const Icon(
+                                        Icons.delete_outline,
+                                        size: 16,
+                                        color: Colors.red),
+                                    label: const Text(
+                                        '캐릭터 삭제',
+                                        style: TextStyle(
+                                            color: Colors.red,
+                                            fontSize: 12)),
+                                  ),
                               ],
                             ),
                           ),
@@ -316,6 +366,61 @@ class _CharacterScreenState extends State<CharacterScreen> {
                 color: color)),
       ],
     );
+  }
+
+  Future<void> _onDeleteCharacter(CharacterStatModel stat) async {
+    final adventure = context.read<AdventureProvider>();
+    final characters = adventure.myCharacters;
+
+    // 마지막 1마리 체크
+    if (characters.length <= 1) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('마지막 캐릭터는 삭제할 수 없습니다.'),
+        backgroundColor: Colors.red,
+      ));
+      return;
+    }
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('캐릭터 삭제'),
+        content: Text(
+            '${stat.characterName}을(를) 삭제하시겠습니까?\n삭제한 캐릭터는 복구할 수 없습니다.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('삭제'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true || !mounted) return;
+
+    try {
+      await ApiClient.dio.delete('/adventures/character/${stat.statId}');
+      await adventure.loadStages();
+      setState(() => _currentPage = 0);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('캐릭터가 삭제되었습니다.'),
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('캐릭터 삭제에 실패했습니다.'),
+          backgroundColor: Colors.red,
+        ));
+      }
+    }
   }
 
   Future<void> _onSelectCharacter(int statId) async {
