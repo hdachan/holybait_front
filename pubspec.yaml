@@ -42,4 +42,5 @@ flutter:
     - assets/images/characters/bear/
     - assets/images/monsters/monster1/
     - assets/images/characters/dragon/
+    - assets/images/space/
   uses-material-design: true
