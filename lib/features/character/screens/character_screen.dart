@@ -6,6 +6,8 @@ import '../../adventure/provider/adventure_provider.dart';
 import '../../../data/models/adventure_model.dart';
 import '../../../core/network/api_client.dart';
 import '../../shop/screens/shop_screen.dart';
+import '../../../core/widgets/character_background.dart';
+import '../../../core/widgets/currency_badge.dart';
 
 class CharacterScreen extends StatefulWidget {
   const CharacterScreen({super.key});
@@ -34,47 +36,29 @@ class _CharacterScreenState extends State<CharacterScreen> {
   Color _themeColor(String? key) {
     switch (key) {
       case 'char_dragon': return const Color(0xFFFF6B35);
-      case 'char_knight': return const Color(0xFF2196F3);
-      default: return const Color(0xFFE84545);
+      case 'char_knight': return const Color(0xFF42A5F5);
+      default:            return const Color(0xFFE84545);
     }
   }
 
-  bool _hasSprites(String? key) {
-    return key == null ||
-        key == 'char_bear' ||
-        key == 'char_knight' ||
-        key == 'char_dragon';
-  }
-
-  bool _hasBackground(String? key) {
-    return key == null || key == 'char_bear';
-  }
+  bool _hasSprites(String? key) =>
+      key == null || key == 'char_bear' || key == 'char_knight' || key == 'char_dragon';
 
   String _spriteFolder(String? key) {
     switch (key) {
       case 'char_knight': return 'assets/images/characters/knight/';
       case 'char_dragon': return 'assets/images/characters/dragon/';
-      default: return 'assets/images/characters/bear/';
+      default:            return 'assets/images/characters/bear/';
     }
   }
 
-  // 캐릭터별 파일명 prefix (bear/knight: sprite, dragon: frame)
   String _spritePrefix(String? key) {
     switch (key) {
       case 'char_dragon': return 'frame';
-      default: return 'sprite';
+      default:            return 'sprite';
     }
   }
 
-  String _backgroundAsset(String? key) {
-    return '${_spriteFolder(key)}background.png';
-  }
-
-  String _levelBgAsset(String? key) {
-    return '${_spriteFolder(key)}level_background.png';
-  }
-
-  // 모든 캐릭터 frame_01-removebg-preview.png 동일
   String _thumbAsset(String? key) {
     if (_hasSprites(key)) {
       final prefix = _spritePrefix(key);
@@ -85,266 +69,177 @@ class _CharacterScreenState extends State<CharacterScreen> {
 
   String _fmt(int n) {
     if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
-    if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}K';
+    if (n >= 1000)    return '${(n / 1000).toStringAsFixed(1)}K';
     return n.toString();
   }
 
   @override
   Widget build(BuildContext context) {
-    final currency = context.watch<CurrencyProvider>();
+    final currency  = context.watch<CurrencyProvider>();
     final adventure = context.watch<AdventureProvider>();
     final characters = adventure.myCharacters;
     final currentStat = characters.isNotEmpty && _currentPage < characters.length
         ? characters[_currentPage]
         : null;
     final color = _themeColor(currentStat?.imageKey);
-    final showBg = _hasBackground(currentStat?.imageKey);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF2F1FA),
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         automaticallyImplyLeading: false,
-        // 왼쪽: 골드 + 신발코인
-        leading: Padding(
-          padding: const EdgeInsets.only(left: 12),
-          child: Row(children: [
-            const Text('🪙', style: TextStyle(fontSize: 13)),
-            const SizedBox(width: 3),
-            Text(_fmt(currency.gold),
-                style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFFFFB300),
-                    fontSize: 12)),
-            const SizedBox(width: 6),
-            const Text('👟', style: TextStyle(fontSize: 13)),
-            const SizedBox(width: 3),
-            Text(_fmt(currency.shoeCoin),
-                style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF42A5F5),
-                    fontSize: 12)),
-          ]),
-        ),
+        leading: const CurrencyBadge(),
         leadingWidth: 140,
         title: const Text('캐릭터',
-            style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-                color: Colors.black)),
+            style: TextStyle(fontWeight: FontWeight.bold,
+                fontSize: 18, color: Colors.white)),
         centerTitle: true,
-        // 오른쪽: 상점 버튼
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: TextButton.icon(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const ShopScreen()),
-              ).then((_) {
+              onPressed: () => Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const ShopScreen()))
+                  .then((_) {
                 context.read<CurrencyProvider>().load();
                 context.read<AdventureProvider>().loadStages();
               }),
               icon: const Text('🛒', style: TextStyle(fontSize: 16)),
               label: const Text('상점',
-                  style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.deepPurple)),
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold,
+                      color: Color(0xFFF4A259))),
               style: TextButton.styleFrom(
-                backgroundColor:
-                Colors.deepPurple.withOpacity(0.08),
+                backgroundColor: const Color(0xFFF4A259).withOpacity(0.12),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20)),
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               ),
             ),
           ),
         ],
       ),
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          // 전체 화면 배경
-          if (showBg)
-            Image.asset(
-              _backgroundAsset(currentStat?.imageKey),
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) =>
-                  Container(color: const Color(0xFFF2F1FA)),
-            )
-          else
-            Container(color: const Color(0xFFF2F1FA)),
+      body: CharacterBackground(
+        child: SafeArea(
+          child: Column(
+            children: [
+              // 레벨 바
+              if (currentStat != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+                  child: _LevelBar(stat: currentStat),
+                ),
 
-          // 컨텐츠
-          SafeArea(
-            child: Column(
-              children: [
-                // 레벨 바
-                if (currentStat != null)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
-                    child: _LevelBar(stat: currentStat),
-                  ),
+              // 메인 영역
+              Expanded(
+                child: adventure.isLoading
+                    ? const Center(child: CircularProgressIndicator(color: Colors.white))
+                    : characters.isEmpty
+                    ? _buildError(adventure)
+                    : LayoutBuilder(
+                  builder: (context, constraints) {
+                    final spriteSize =
+                    (constraints.maxHeight * 0.65).clamp(150.0, 340.0);
+                    return Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // 스프라이트
+                        _hasSprites(currentStat?.imageKey)
+                            ? _SpriteAnimation(
+                          spriteFolder: _spriteFolder(currentStat?.imageKey),
+                          spritePrefix: _spritePrefix(currentStat?.imageKey),
+                          totalFrames: 25,
+                          color: color,
+                          size: spriteSize,
+                        )
+                            : _CharacterPlaceholder(color: color, size: spriteSize),
 
-                // 메인 영역
-                Expanded(
-                  child: adventure.isLoading
-                      ? const Center(child: CircularProgressIndicator())
-                      : characters.isEmpty
-                      ? _buildError(adventure)
-                      : LayoutBuilder(
-                    builder: (context, constraints) {
-                      final spriteSize =
-                      (constraints.maxHeight * 0.65)
-                          .clamp(150.0, 340.0);
-                      return Row(
-                        crossAxisAlignment:
-                        CrossAxisAlignment.stretch,
-                        children: [
-                          // 캐릭터 영역 (자물쇠 슬롯 제거)
-                          Expanded(
-                            child: Column(
-                              mainAxisAlignment:
-                              MainAxisAlignment.center,
-                              crossAxisAlignment:
-                              CrossAxisAlignment.center,
+                        const SizedBox(height: 12),
+
+                        // 스탯 칩
+                        if (currentStat != null)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.08),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                  color: Colors.white.withOpacity(0.12)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                // 스프라이트
-                                _hasSprites(currentStat?.imageKey)
-                                    ? _SpriteAnimation(
-                                  spriteFolder: _spriteFolder(
-                                      currentStat?.imageKey),
-                                  spritePrefix: _spritePrefix(
-                                      currentStat?.imageKey),
-                                  totalFrames: 25,
-                                  color: color,
-                                  size: spriteSize,
-                                )
-                                    : _CharacterPlaceholder(
-                                  color: color,
-                                  size: spriteSize,
-                                ),
-                                const SizedBox(height: 8),
-
-                                // 스탯
-                                if (currentStat != null)
-                                  Container(
-                                    padding:
-                                    const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 8),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white
-                                          .withOpacity(0.75),
-                                      borderRadius:
-                                      BorderRadius.circular(12),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      mainAxisAlignment:
-                                      MainAxisAlignment.center,
-                                      children: [
-                                        _statChip(
-                                            Icons.close,
-                                            '공격',
-                                            currentStat.atk,
-                                            const Color(0xFF9C6FDE)),
-                                        const SizedBox(width: 12),
-                                        _statChip(
-                                            Icons.shield_outlined,
-                                            '방어',
-                                            currentStat.def,
-                                            const Color(0xFF5B9BD5)),
-                                      ],
-                                    ),
-                                  ),
-                                const SizedBox(height: 10),
-
-                                // 착용 버튼
-                                if (currentStat != null)
-                                  Center(
-                                    child: _EquipButton(
-                                      stat: currentStat,
-                                      color: color,
-                                      onTap: () =>
-                                          _onSelectCharacter(
-                                              currentStat.statId),
-                                    ),
-                                  ),
-                                const SizedBox(height: 8),
-
-                                // 삭제 버튼 (착용 중이 아닐 때만)
-                                if (currentStat != null &&
-                                    !currentStat.isActive)
-                                  TextButton.icon(
-                                    onPressed: () =>
-                                        _onDeleteCharacter(
-                                            currentStat),
-                                    icon: const Icon(
-                                        Icons.delete_outline,
-                                        size: 16,
-                                        color: Colors.red),
-                                    label: const Text(
-                                        '캐릭터 삭제',
-                                        style: TextStyle(
-                                            color: Colors.red,
-                                            fontSize: 12)),
-                                  ),
+                                _statChip(Icons.close, '공격',
+                                    currentStat.atk, const Color(0xFFFF6B6B)),
+                                const SizedBox(width: 16),
+                                _statChip(Icons.shield_outlined, '방어',
+                                    currentStat.def, const Color(0xFF42A5F5)),
                               ],
                             ),
                           ),
-                        ],
-                      );
-                    },
-                  ),
+
+                        const SizedBox(height: 12),
+
+                        // 착용 버튼
+                        if (currentStat != null)
+                          _EquipButton(
+                            stat: currentStat,
+                            color: color,
+                            onTap: () => _onSelectCharacter(currentStat.statId),
+                          ),
+
+                        // 삭제 버튼
+                        if (currentStat != null && !currentStat.isActive)
+                          TextButton.icon(
+                            onPressed: () => _onDeleteCharacter(currentStat),
+                            icon: const Icon(Icons.delete_outline,
+                                size: 14, color: Colors.redAccent),
+                            label: const Text('캐릭터 삭제',
+                                style: TextStyle(
+                                    color: Colors.redAccent, fontSize: 12)),
+                          ),
+                      ],
+                    );
+                  },
                 ),
+              ),
 
-                const SizedBox(height: 12),
+              const SizedBox(height: 8),
 
-                // 하단 슬롯
-                _BottomSlots(
-                  characters: characters,
-                  currentIndex: _currentPage,
-                  totalSlots: adventure.slotCount,
-                  thumbAsset: _thumbAsset,
-                  themeColor: _themeColor,
-                  hasSprites: _hasSprites,
-                  onTap: (i) => setState(() => _currentPage = i),
-                ),
+              // 하단 슬롯
+              _BottomSlots(
+                characters: characters,
+                currentIndex: _currentPage,
+                totalSlots: adventure.slotCount,
+                thumbAsset: _thumbAsset,
+                themeColor: _themeColor,
+                hasSprites: _hasSprites,
+                onTap: (i) => setState(() => _currentPage = i),
+              ),
 
-                const SizedBox(height: 16),
-              ],
-            ),
+              const SizedBox(height: 16),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
-
 
   Widget _buildError(AdventureProvider adventure) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.error_outline, color: Colors.grey, size: 40),
+          Icon(Icons.error_outline, color: Colors.white.withOpacity(0.3), size: 40),
           const SizedBox(height: 12),
-          const Text('캐릭터 정보를 불러올 수 없습니다.',
-              style: TextStyle(color: Colors.grey)),
-          if (adventure.error != null)
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text(adventure.error!,
-                  style: const TextStyle(color: Colors.red, fontSize: 12),
-                  textAlign: TextAlign.center),
-            ),
+          Text('캐릭터 정보를 불러올 수 없습니다.',
+              style: TextStyle(color: Colors.white.withOpacity(0.4))),
           TextButton.icon(
             onPressed: () => adventure.loadStages(),
-            icon: const Icon(Icons.refresh),
-            label: const Text('다시 시도'),
+            icon: Icon(Icons.refresh, color: Colors.white.withOpacity(0.5)),
+            label: Text('다시 시도',
+                style: TextStyle(color: Colors.white.withOpacity(0.5))),
           ),
         ],
       ),
@@ -355,25 +250,20 @@ class _CharacterScreenState extends State<CharacterScreen> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 14, color: color),
+        Icon(icon, size: 13, color: color),
         const SizedBox(width: 4),
         Text('$label  ',
-            style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+            style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.5))),
         Text('$value',
-            style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-                color: color)),
+            style: TextStyle(fontSize: 13,
+                fontWeight: FontWeight.bold, color: color)),
       ],
     );
   }
 
   Future<void> _onDeleteCharacter(CharacterStatModel stat) async {
     final adventure = context.read<AdventureProvider>();
-    final characters = adventure.myCharacters;
-
-    // 마지막 1마리 체크
-    if (characters.length <= 1) {
+    if (adventure.myCharacters.length <= 1) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text('마지막 캐릭터는 삭제할 수 없습니다.'),
         backgroundColor: Colors.red,
@@ -384,18 +274,19 @@ class _CharacterScreenState extends State<CharacterScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('캐릭터 삭제'),
-        content: Text(
-            '${stat.characterName}을(를) 삭제하시겠습니까?\n삭제한 캐릭터는 복구할 수 없습니다.'),
+        backgroundColor: const Color(0xFF1E1225),
+        title: const Text('캐릭터 삭제',
+            style: TextStyle(color: Colors.white)),
+        content: Text('${stat.characterName}을(를) 삭제하시겠습니까?\n삭제한 캐릭터는 복구할 수 없습니다.',
+            style: const TextStyle(color: Colors.white70)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('취소'),
+            child: Text('취소', style: TextStyle(color: Colors.white.withOpacity(0.5))),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('삭제'),
+            child: const Text('삭제', style: TextStyle(color: Colors.redAccent)),
           ),
         ],
       ),
@@ -413,7 +304,7 @@ class _CharacterScreenState extends State<CharacterScreen> {
           behavior: SnackBarBehavior.floating,
         ));
       }
-    } catch (e) {
+    } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content: Text('캐릭터 삭제에 실패했습니다.'),
@@ -432,8 +323,7 @@ class _CharacterScreenState extends State<CharacterScreen> {
         content: const Text('캐릭터가 변경되었습니다.'),
         backgroundColor: const Color(0xFF4CAF50),
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         duration: const Duration(seconds: 2),
       ));
@@ -490,7 +380,6 @@ class _SpriteAnimationState extends State<_SpriteAnimation> {
   @override
   Widget build(BuildContext context) {
     final s = widget.size;
-
     return GestureDetector(
       onTap: _play,
       child: SizedBox(
@@ -528,28 +417,24 @@ class _CharacterPlaceholder extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: size,
-      height: size,
+      width: size, height: size,
       child: Center(
         child: Container(
-          width: size * 0.8,
-          height: size * 0.8,
+          width: size * 0.7,
+          height: size * 0.7,
           decoration: BoxDecoration(
             color: color.withOpacity(0.08),
-            borderRadius: BorderRadius.circular(20),
+            shape: BoxShape.circle,
             border: Border.all(color: color.withOpacity(0.2), width: 2),
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.person_outline,
-                  size: size * 0.3, color: color.withOpacity(0.3)),
+              Icon(Icons.person_outline, size: size * 0.3,
+                  color: color.withOpacity(0.4)),
               const SizedBox(height: 4),
               Text('준비 중',
-                  style: TextStyle(
-                      fontSize: 12,
-                      color: color.withOpacity(0.4),
-                      fontWeight: FontWeight.w500)),
+                  style: TextStyle(fontSize: 12, color: color.withOpacity(0.4))),
             ],
           ),
         ),
@@ -561,132 +446,42 @@ class _CharacterPlaceholder extends StatelessWidget {
 // ── 레벨 바 ──
 class _LevelBar extends StatelessWidget {
   final CharacterStatModel stat;
-
   const _LevelBar({required this.stat});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 64,
+      height: 52,
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.9),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          )
-        ],
+        color: Colors.white.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
         children: [
-          Text(
-            'LV ${stat.level}',
-            style: const TextStyle(
-              color: Color(0xFF4CAF50),
-              fontWeight: FontWeight.bold,
-              fontSize: 15,
-            ),
-          ),
+          Text('LV ${stat.level}',
+              style: const TextStyle(
+                  color: Color(0xFF4CAF50),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14)),
           const SizedBox(width: 12),
           Expanded(
             child: ClipRRect(
               borderRadius: BorderRadius.circular(6),
               child: LinearProgressIndicator(
                 value: stat.expProgress,
-                minHeight: 12,
-                backgroundColor: Colors.grey.withOpacity(0.15),
-                valueColor:
-                const AlwaysStoppedAnimation(Color(0xFF4CAF50)),
+                minHeight: 10,
+                backgroundColor: Colors.white.withOpacity(0.1),
+                valueColor: const AlwaysStoppedAnimation(Color(0xFF4CAF50)),
               ),
             ),
           ),
           const SizedBox(width: 10),
-          Text(
-            '${stat.exp}/${stat.requiredExp}',
-            style: const TextStyle(fontSize: 11, color: Colors.grey),
-          ),
+          Text('${stat.exp}/${stat.requiredExp}',
+              style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.4))),
         ],
       ),
-    );
-  }
-}
-
-// ── 자물쇠 슬롯 ──
-class _LockSlot extends StatelessWidget {
-  final bool hasBg;
-  const _LockSlot({this.hasBg = false});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 46,
-      height: 46,
-      decoration: BoxDecoration(
-        color: hasBg
-            ? Colors.white.withOpacity(0.55)
-            : const Color(0xFFF0F0F0),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: hasBg
-              ? Colors.white.withOpacity(0.7)
-              : Colors.grey.withOpacity(0.25),
-          width: 1.2,
-        ),
-        boxShadow: hasBg
-            ? [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.12),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          )
-        ]
-            : null,
-      ),
-      child: Icon(
-        Icons.lock_outline,
-        size: 20,
-        color: hasBg ? Colors.grey.shade700 : Colors.grey.shade400,
-      ),
-    );
-  }
-}
-
-// ── 스탯 ──
-class _StatDisplay extends StatelessWidget {
-  final CharacterStatModel stat;
-  const _StatDisplay({required this.stat});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _row(Icons.close, '공격력', stat.atk, const Color(0xFF9C6FDE)),
-        const SizedBox(height: 4),
-        _row(Icons.shield_outlined, '방어력', stat.def,
-            const Color(0xFF5B9BD5)),
-      ],
-    );
-  }
-
-  Widget _row(IconData icon, String label, int value, Color color) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 15, color: color),
-        const SizedBox(width: 6),
-        Text('$label :  ',
-            style: TextStyle(fontSize: 13, color: Colors.grey.shade700)),
-        Text('$value',
-            style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-                color: color)),
-      ],
     );
   }
 }
@@ -697,11 +492,7 @@ class _EquipButton extends StatelessWidget {
   final Color color;
   final VoidCallback onTap;
 
-  const _EquipButton({
-    required this.stat,
-    required this.color,
-    required this.onTap,
-  });
+  const _EquipButton({required this.stat, required this.color, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -711,20 +502,16 @@ class _EquipButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: const Color(0xFF4CAF50).withOpacity(0.15),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-              color: const Color(0xFF4CAF50).withOpacity(0.5)),
+          border: Border.all(color: const Color(0xFF4CAF50).withOpacity(0.4)),
         ),
         child: const Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.check_circle_outline,
-                size: 15, color: Color(0xFF4CAF50)),
+            Icon(Icons.check_circle_outline, size: 15, color: Color(0xFF4CAF50)),
             SizedBox(width: 6),
             Text('착용 중',
-                style: TextStyle(
-                    color: Color(0xFF4CAF50),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13)),
+                style: TextStyle(color: Color(0xFF4CAF50),
+                    fontWeight: FontWeight.bold, fontSize: 13)),
           ],
         ),
       );
@@ -736,8 +523,7 @@ class _EquipButton extends StatelessWidget {
         backgroundColor: color,
         foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 10),
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         elevation: 0,
       ),
       child: const Text('착용하기',
@@ -773,29 +559,29 @@ class _BottomSlots extends StatelessWidget {
 
     if (cost == -1) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('슬롯이 이미 최대입니다.')),
-      );
+          const SnackBar(content: Text('슬롯이 이미 최대입니다.')));
       return;
     }
 
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('슬롯 확장'),
+        backgroundColor: const Color(0xFF1E1225),
+        title: const Text('슬롯 확장', style: TextStyle(color: Colors.white)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('슬롯을 ${currentSlot + 1}개로 확장합니다.'),
+            Text('슬롯을 ${currentSlot + 1}개로 확장합니다.',
+                style: const TextStyle(color: Colors.white70)),
             const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Text('🪙 골드 '),
+                const Text('🪙 골드 ', style: TextStyle(color: Colors.white70)),
                 Text('$cost개',
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.amber)),
-                const Text(' 소모'),
+                    style: const TextStyle(fontWeight: FontWeight.bold,
+                        color: Color(0xFFF4A259))),
+                const Text(' 소모', style: TextStyle(color: Colors.white70)),
               ],
             ),
           ],
@@ -803,15 +589,18 @@ class _BottomSlots extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('취소'),
+            child: Text('취소',
+                style: TextStyle(color: Colors.white.withOpacity(0.5))),
           ),
           FilledButton(
+            style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFFF4A259),
+                foregroundColor: Colors.black),
             onPressed: () async {
               Navigator.pop(context);
               final result = await adventure.expandSlot();
               if (!context.mounted) return;
               if (result != null) {
-                // 골드 즉시 갱신
                 context.read<CurrencyProvider>().load();
                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                   content: Text('슬롯이 ${result.slotCount}개로 확장되었습니다!'),
@@ -822,23 +611,25 @@ class _BottomSlots extends StatelessWidget {
                   margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                 ));
               } else {
-                // 골드 부족 or 기타 오류 → 팝업
                 final errMsg = adventure.error ?? '';
-                String msg;
-                if (errMsg.contains('골드') || errMsg.contains('403')) {
-                  msg = '골드가 부족합니다.\n모험을 통해 골드를 모아보세요!';
-                } else if (errMsg.contains('최대')) {
-                  msg = '슬롯이 이미 최대입니다.';
-                } else {
-                  msg = '슬롯 확장에 실패했습니다.';
-                }
+                final msg = errMsg.contains('골드') || errMsg.contains('403')
+                    ? '골드가 부족합니다.\n모험을 통해 골드를 모아보세요!'
+                    : errMsg.contains('최대')
+                    ? '슬롯이 이미 최대입니다.'
+                    : '슬롯 확장에 실패했습니다.';
                 showDialog(
                   context: context,
                   builder: (_) => AlertDialog(
-                    title: const Text('슬롯 확장 실패'),
-                    content: Text(msg),
+                    backgroundColor: const Color(0xFF1E1225),
+                    title: const Text('슬롯 확장 실패',
+                        style: TextStyle(color: Colors.white)),
+                    content: Text(msg,
+                        style: const TextStyle(color: Colors.white70)),
                     actions: [
                       FilledButton(
+                        style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFFF4A259),
+                            foregroundColor: Colors.black),
                         onPressed: () => Navigator.pop(context),
                         child: const Text('확인'),
                       ),
@@ -857,7 +648,6 @@ class _BottomSlots extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final adventure = context.watch<AdventureProvider>();
-    // 슬롯 수 + 1 (마지막 하나는 구매 버튼, 최대 10개면 추가 안 함)
     final displayCount = adventure.slotCount < 10
         ? adventure.slotCount + 1
         : adventure.slotCount;
@@ -875,10 +665,7 @@ class _BottomSlots extends StatelessWidget {
           final color = themeColor(c?.imageKey);
 
           if (!hasChar) {
-            // i < slotCount → 구매된 빈 슬롯 (그냥 빈 슬롯)
-            // i == slotCount → 구매 가능한 다음 슬롯 (골드 구매 버튼)
             final isPurchasable = i == adventure.slotCount;
-
             return GestureDetector(
               onTap: isPurchasable
                   ? () => _showExpandDialog(context, adventure)
@@ -887,19 +674,19 @@ class _BottomSlots extends StatelessWidget {
                 width: 68,
                 margin: EdgeInsets.only(left: i == 0 ? 0 : 10),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.85),
+                  color: Colors.white.withOpacity(0.07),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color: isPurchasable
-                        ? Colors.amber.withOpacity(0.4)
-                        : Colors.grey.withOpacity(0.2),
+                        ? const Color(0xFFF4A259).withOpacity(0.4)
+                        : Colors.white.withOpacity(0.1),
                   ),
                 ),
                 child: Icon(
                   isPurchasable ? Icons.add_circle_outline : Icons.add,
                   color: isPurchasable
-                      ? Colors.amber.shade600
-                      : Colors.grey.shade400,
+                      ? const Color(0xFFF4A259)
+                      : Colors.white.withOpacity(0.2),
                   size: 26,
                 ),
               ),
@@ -913,20 +700,17 @@ class _BottomSlots extends StatelessWidget {
               width: 68,
               margin: EdgeInsets.only(left: i == 0 ? 0 : 10),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.85),
+                color: isSelected
+                    ? color.withOpacity(0.15)
+                    : Colors.white.withOpacity(0.07),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: isSelected ? color : Colors.grey.withOpacity(0.2),
+                  color: isSelected ? color : Colors.white.withOpacity(0.1),
                   width: isSelected ? 2 : 1,
                 ),
                 boxShadow: isSelected
-                    ? [
-                  BoxShadow(
-                    color: color.withOpacity(0.15),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  )
-                ]
+                    ? [BoxShadow(color: color.withOpacity(0.25),
+                    blurRadius: 10, offset: const Offset(0, 2))]
                     : [],
               ),
               child: Stack(
@@ -935,33 +719,22 @@ class _BottomSlots extends StatelessWidget {
                     child: Padding(
                       padding: const EdgeInsets.all(8),
                       child: hasSprites(c?.imageKey)
-                          ? Image.asset(
-                        thumbAsset(c?.imageKey),
-                        fit: BoxFit.contain,
-                        errorBuilder: (_, __, ___) => Icon(
-                          Icons.person_outline,
-                          color: color.withOpacity(0.4),
-                          size: 30,
-                        ),
-                      )
-                          : Icon(
-                        Icons.person_outline,
-                        color: color.withOpacity(0.4),
-                        size: 30,
-                      ),
+                          ? Image.asset(thumbAsset(c?.imageKey),
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) => Icon(
+                              Icons.person_outline,
+                              color: color.withOpacity(0.5), size: 30))
+                          : Icon(Icons.person_outline,
+                          color: color.withOpacity(0.5), size: 30),
                     ),
                   ),
                   if (c != null && c.isActive)
                     Positioned(
-                      top: 4,
-                      right: 4,
+                      top: 4, right: 4,
                       child: Container(
-                        width: 16,
-                        height: 16,
+                        width: 16, height: 16,
                         decoration: const BoxDecoration(
-                          color: Color(0xFF4CAF50),
-                          shape: BoxShape.circle,
-                        ),
+                            color: Color(0xFF4CAF50), shape: BoxShape.circle),
                         child: const Icon(Icons.check,
                             color: Colors.white, size: 11),
                       ),

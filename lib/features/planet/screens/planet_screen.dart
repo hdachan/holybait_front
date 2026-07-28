@@ -5,6 +5,7 @@ import '../../../data/models/planet_model.dart';
 import 'planet_detail_screen.dart';
 import '../../currency/provider/currency_provider.dart';
 import '../../../core/widgets/app_background.dart';
+import '../../../core/widgets/currency_badge.dart';
 
 class PlanetScreen extends StatefulWidget {
   const PlanetScreen({super.key});
@@ -58,26 +59,7 @@ class _PlanetScreenState extends State<PlanetScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         automaticallyImplyLeading: false,
-        leading: Padding(
-          padding: const EdgeInsets.only(left: 12),
-          child: Row(children: [
-            const Text('🪙', style: TextStyle(fontSize: 13)),
-            const SizedBox(width: 3),
-            Text(_fmt(currency.gold),
-                style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFFFFB300),
-                    fontSize: 12)),
-            const SizedBox(width: 6),
-            const Text('👟', style: TextStyle(fontSize: 13)),
-            const SizedBox(width: 3),
-            Text(_fmt(currency.shoeCoin),
-                style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF42A5F5),
-                    fontSize: 12)),
-          ]),
-        ),
+        leading: const CurrencyBadge(),
         leadingWidth: 140,
         title: const Text('행성 선택',
             style: TextStyle(

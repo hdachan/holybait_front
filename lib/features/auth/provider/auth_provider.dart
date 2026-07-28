@@ -12,17 +12,22 @@ class AuthProvider extends ChangeNotifier {
   AuthStatus _status = AuthStatus.initial;
   UserModel?  _user;
   String?     _errorMessage;
+  bool        _needsConsent = false;
 
   AuthStatus get status       => _status;
   UserModel? get user         => _user;
   String?    get errorMessage => _errorMessage;
   bool get isAuthenticated    => _status == AuthStatus.authenticated;
+  bool get needsConsent       => _needsConsent;
+  bool get marketingAgreed    => _user?.marketingAgreed ?? false;
 
   Future<void> checkAuth() async {
     _set(AuthStatus.loading);
     try {
       if (await _repository.hasToken()) {
         _user = await _repository.getMe();
+        // 기존 유저도 동의 안 했으면 동의 화면으로
+        _needsConsent = !(_user?.consentCompleted ?? false);
         _set(AuthStatus.authenticated);
       } else {
         _set(AuthStatus.unauthenticated);
@@ -35,11 +40,10 @@ class AuthProvider extends ChangeNotifier {
   Future<void> loginWithGoogle() async {
     _set(AuthStatus.loading);
     try {
-      await _repository.loginWithGoogle();
+      _needsConsent = await _repository.loginWithGoogle();
       _user = await _repository.getMe();
       _set(AuthStatus.authenticated);
     } on DioException catch (e) {
-      // 네트워크 / 서버 연결 오류
       if (e.type == DioExceptionType.connectionError ||
           e.type == DioExceptionType.unknown) {
         _errorMessage = '서버에 연결할 수 없습니다.\n잠시 후 다시 시도해주세요.';
@@ -73,7 +77,31 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // 닉네임 수정 — 성공 시 true, 실패 시 false 반환
+  // 동의 완료
+  Future<void> completeConsent({required bool marketingAgreed}) async {
+    try {
+      await _repository.completeConsent(marketingAgreed: marketingAgreed);
+      _needsConsent = false;
+      _user = await _repository.getMe();
+      notifyListeners();
+    } catch (e) {
+      _errorMessage = '동의 처리에 실패했습니다.';
+      notifyListeners();
+    }
+  }
+
+  // 마케팅 동의 업데이트
+  Future<bool> updateMarketingConsent(bool value) async {
+    try {
+      await _repository.updateMarketingConsent(value);
+      _user = await _repository.getMe();
+      notifyListeners();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<bool> updateNickname(String nickname) async {
     try {
       final updated = await _repository.updateNickname(nickname);
@@ -81,7 +109,6 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } on DioException catch (e) {
-      // 서버에서 보낸 에러 메시지(닉네임 길이 등) 있으면 사용
       final serverMsg = e.response?.data is Map
           ? e.response?.data['message']
           : null;
@@ -101,6 +128,7 @@ class AuthProvider extends ChangeNotifier {
       await _repository.logout();
     } catch (_) {} finally {
       _user = null;
+      _needsConsent = false;
       _set(AuthStatus.unauthenticated);
     }
   }

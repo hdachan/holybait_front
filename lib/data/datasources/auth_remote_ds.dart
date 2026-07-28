@@ -21,12 +21,18 @@ class AuthRemoteDataSource {
     return UserModel.fromJson(res.data);
   }
 
-  // 닉네임 수정 — GET /auth/me 와 같은 경로의 PATCH
   Future<UserModel> updateNickname(String nickname) async {
-    final res = await _dio.patch(ApiConstants.me, data: {
-      'nickname': nickname,
-    });
+    final res = await _dio.patch(ApiConstants.me, data: {'nickname': nickname});
     return UserModel.fromJson(res.data);
+  }
+
+  Future<void> completeConsent({required bool marketingAgreed}) async {
+    await _dio.post('/auth/consent', data: {'marketingAgreed': marketingAgreed});
+  }
+
+  Future<void> updateMarketingConsent(bool marketingAgreed) async {
+    await _dio.patch('/auth/consent/marketing',
+        data: {'marketingAgreed': marketingAgreed});
   }
 
   Future<void> logout(String refreshToken) async {
@@ -36,11 +42,7 @@ class AuthRemoteDataSource {
     });
   }
 
-  Future<void> logoutAll() async {
-    await _dio.post(ApiConstants.logoutAll);
-  }
+  Future<void> logoutAll() async => await _dio.post(ApiConstants.logoutAll);
 
-  Future<void> withdraw() async {
-    await _dio.delete(ApiConstants.withdraw);
-  }
+  Future<void> withdraw() async => await _dio.delete(ApiConstants.withdraw);
 }

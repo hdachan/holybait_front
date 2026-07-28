@@ -4,7 +4,9 @@ class UserModel {
   final String nickname;
   final String provider;
   final String status;
-  final String? createdAt;
+  final String createdAt;
+  final bool marketingAgreed;
+  final bool consentCompleted;
 
   UserModel({
     required this.uuid,
@@ -12,15 +14,19 @@ class UserModel {
     required this.nickname,
     required this.provider,
     required this.status,
-    this.createdAt,
+    required this.createdAt,
+    required this.marketingAgreed,
+    required this.consentCompleted,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) => UserModel(
-    uuid:      json['uuid']      as String,
-    email:     json['email']     as String,
-    nickname:  json['nickname']  as String,
-    provider:  json['provider']  as String,
-    status:    json['status']    as String,
-    createdAt: json['createdAt'] as String?,
+    uuid:              json['uuid'] ?? '',
+    email:             json['email'] ?? '',
+    nickname:          json['nickname'] ?? '',
+    provider:          json['provider']?.toString() ?? '',
+    status:            json['status']?.toString() ?? '',
+    createdAt:         json['createdAt']?.toString() ?? '',
+    marketingAgreed:   json['marketingAgreed'] ?? false,
+    consentCompleted:  json['consentCompleted'] ?? false,
   );
 }

@@ -4,10 +4,10 @@ import 'package:provider/provider.dart';
 import '../../routine/provider/routine_provider.dart';
 import '../../routine/screens/routine_form_screen.dart';
 import '../../routine/screens/workout_history_screen.dart';
-
 import '../../currency/provider/currency_provider.dart';
 import '../../../data/models/routine_model.dart';
 import '../../step/step_provider.dart';
+import '../../../core/widgets/app_background.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -40,30 +40,46 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        title: const Text('운동', style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: const Color(0xFF160d1f),
+        elevation: 0,
+        title: const Text('운동',
+            style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                fontSize: 18)),
         centerTitle: false,
         bottom: TabBar(
           controller: _tabController,
+          indicatorColor: const Color(0xFFF4A259),
+          indicatorWeight: 2,
+          labelColor: const Color(0xFFF4A259),
+          unselectedLabelColor: Colors.white38,
+          labelStyle: const TextStyle(
+              fontWeight: FontWeight.bold, fontSize: 14),
           tabs: const [
             Tab(text: '루틴'),
             Tab(text: '걸음수'),
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: const [
-          _RoutineTab(),
-          _StepTab(),
-        ],
+      body: AppBackground(
+        child: TabBarView(
+          controller: _tabController,
+          children: const [
+            _RoutineTab(),
+            _StepTab(),
+          ],
+        ),
       ),
       floatingActionButton: ListenableBuilder(
         listenable: _tabController,
         builder: (context, _) {
-          // 루틴 탭일 때만 FAB 표시
           if (_tabController.index != 0) return const SizedBox.shrink();
           return FloatingActionButton(
+            backgroundColor: const Color(0xFFF4A259),
+            foregroundColor: Colors.black,
             onPressed: () async {
               context.read<RoutineProvider>().clearSelected();
               await Navigator.push(
@@ -90,7 +106,8 @@ class _RoutineTab extends StatelessWidget {
     final provider = context.watch<RoutineProvider>();
 
     return provider.isLoading
-        ? const Center(child: CircularProgressIndicator())
+        ? const Center(
+        child: CircularProgressIndicator(color: Colors.white))
         : provider.routines.isEmpty
         ? _buildEmpty(context)
         : _buildList(context, provider.routines);
@@ -101,13 +118,17 @@ class _RoutineTab extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.fitness_center, size: 64, color: Colors.grey),
+          Icon(Icons.fitness_center,
+              size: 64, color: Colors.white.withOpacity(0.3)),
           const SizedBox(height: 16),
           const Text('루틴을 추가해주세요',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white)),
           const SizedBox(height: 8),
-          const Text('나만의 완벽한 운동 루틴을 만들어보세요.',
-              style: TextStyle(color: Colors.grey)),
+          Text('나만의 완벽한 운동 루틴을 만들어보세요.',
+              style: TextStyle(color: Colors.white.withOpacity(0.5))),
         ],
       ),
     );
@@ -115,7 +136,7 @@ class _RoutineTab extends StatelessWidget {
 
   Widget _buildList(BuildContext context, List<RoutineModel> routines) {
     return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
       children: [
         // 전체 기록 보기 버튼
         GestureDetector(
@@ -129,28 +150,25 @@ class _RoutineTab extends StatelessWidget {
             padding: const EdgeInsets.symmetric(
                 horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Colors.white.withOpacity(0.06),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.blue.withOpacity(0.2)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.03),
-                  blurRadius: 6,
-                  offset: const Offset(0, 2),
-                )
-              ],
+              border: Border.all(
+                  color: const Color(0xFFF4A259).withOpacity(0.3)),
             ),
-            child: const Row(
+            child: Row(
               children: [
-                Icon(Icons.history_rounded, color: Colors.blue, size: 20),
-                SizedBox(width: 10),
-                Text('전체 운동 기록 보기',
+                Icon(Icons.history_rounded,
+                    color: const Color(0xFFF4A259), size: 20),
+                const SizedBox(width: 10),
+                const Text('전체 운동 기록 보기',
                     style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: Colors.blue)),
-                Spacer(),
-                Icon(Icons.chevron_right, color: Colors.blue, size: 20),
+                        color: Color(0xFFF4A259))),
+                const Spacer(),
+                Icon(Icons.chevron_right,
+                    color: const Color(0xFFF4A259).withOpacity(0.7),
+                    size: 20),
               ],
             ),
           ),
@@ -172,7 +190,7 @@ class _StepTab extends StatelessWidget {
     final currency = context.watch<CurrencyProvider>();
 
     return Padding(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
       child: Column(
         children: [
           const SizedBox(height: 20),
@@ -180,22 +198,20 @@ class _StepTab extends StatelessWidget {
           // 걸음 수 카드
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 24),
+            padding: const EdgeInsets.symmetric(
+                vertical: 36, horizontal: 24),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Colors.white.withOpacity(0.06),
               borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
+              border: Border.all(
+                  color: Colors.white.withOpacity(0.08)),
             ),
             child: Column(
               children: [
-                const Text('오늘 걸음 수',
-                    style: TextStyle(fontSize: 14, color: Colors.grey)),
+                Text('오늘 걸음 수',
+                    style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.white.withOpacity(0.5))),
                 const SizedBox(height: 8),
                 Text(
                   _formatSteps(step.todaySteps),
@@ -204,36 +220,35 @@ class _StepTab extends StatelessWidget {
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF42A5F5)),
                 ),
-                const Text('보',
-                    style: TextStyle(fontSize: 16, color: Colors.grey)),
+                Text('보',
+                    style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.white.withOpacity(0.5))),
               ],
             ),
           ),
 
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
 
           // 코인 정보 카드
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Colors.white.withOpacity(0.06),
               borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
+              border: Border.all(
+                  color: Colors.white.withOpacity(0.08)),
             ),
             child: Column(
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('받을 수 있는 코인',
-                        style: TextStyle(fontSize: 14, color: Colors.grey)),
+                    Text('받을 수 있는 코인',
+                        style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.white.withOpacity(0.5))),
                     Row(children: [
                       const Text('👟',
                           style: TextStyle(fontSize: 16)),
@@ -249,20 +264,22 @@ class _StepTab extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 12),
-                // 하루 캡 진행 바
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      mainAxisAlignment:
+                      MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('오늘 신발코인',
-                            style:
-                            TextStyle(fontSize: 12, color: Colors.grey)),
+                        Text('오늘 신발코인',
+                            style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.white.withOpacity(0.4))),
                         Text(
                           '${currency.todayShoeCoin} / ${currency.dailyCap}개',
-                          style: const TextStyle(
-                              fontSize: 12, color: Colors.grey),
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.white.withOpacity(0.4)),
                         ),
                       ],
                     ),
@@ -274,23 +291,24 @@ class _StepTab extends StatelessWidget {
                             ? currency.todayShoeCoin / currency.dailyCap
                             : 0,
                         minHeight: 8,
-                        backgroundColor: Colors.grey.withOpacity(0.15),
+                        backgroundColor:
+                        Colors.white.withOpacity(0.1),
                         valueColor: const AlwaysStoppedAnimation(
                             Color(0xFF42A5F5)),
                       ),
                     ),
                     const SizedBox(height: 4),
-                    const Text(
-                      '운동 + 걸음수 합산',
-                      style: TextStyle(fontSize: 11, color: Colors.grey),
-                    ),
+                    Text('운동 + 걸음수 합산',
+                        style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.white.withOpacity(0.3))),
                   ],
                 ),
               ],
             ),
           ),
 
-          const SizedBox(height: 28),
+          const SizedBox(height: 24),
 
           // 보상받기 버튼
           SizedBox(
@@ -303,7 +321,8 @@ class _StepTab extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF42A5F5),
                 foregroundColor: Colors.white,
-                disabledBackgroundColor: Colors.grey.withOpacity(0.2),
+                disabledBackgroundColor:
+                Colors.white.withOpacity(0.1),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14)),
                 elevation: 0,
@@ -320,7 +339,8 @@ class _StepTab extends StatelessWidget {
                     ? '👟 신발코인 ${step.claimableCoins}개 받기'
                     : '1,000보 이상 걸으면 받을 수 있어요',
                 style: const TextStyle(
-                    fontSize: 15, fontWeight: FontWeight.bold),
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold),
               ),
             ),
           ),
@@ -328,8 +348,8 @@ class _StepTab extends StatelessWidget {
           if (step.error != null) ...[
             const SizedBox(height: 12),
             Text(step.error!,
-                style:
-                const TextStyle(fontSize: 12, color: Colors.red)),
+                style: const TextStyle(
+                    fontSize: 12, color: Colors.redAccent)),
           ],
         ],
       ),
@@ -341,22 +361,22 @@ class _StepTab extends StatelessWidget {
       return '${(steps / 10000).toStringAsFixed(1)}만';
     }
     return steps.toString().replaceAllMapped(
-        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
+        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+            (m) => '${m[1]},');
   }
 
-  Future<void> _onClaim(
-      BuildContext context, StepProvider step, CurrencyProvider currency) async {
+  Future<void> _onClaim(BuildContext context, StepProvider step,
+      CurrencyProvider currency) async {
     final result = await step.claimReward();
     if (!context.mounted) return;
-
     if (result != null && result.success) {
-      currency.load(); // 코인 즉시 갱신
+      currency.load();
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('👟 신발코인 ${result.grantedCoins}개를 받았어요!'),
         backgroundColor: const Color(0xFF42A5F5),
         behavior: SnackBarBehavior.floating,
-        shape:
-        RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10)),
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         duration: const Duration(seconds: 2),
       ));
@@ -371,39 +391,74 @@ class _RoutineCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E1225),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.06)),
+      ),
       child: ListTile(
         contentPadding:
         const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        leading: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: const Color(0xFF1A3A4A),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: const Icon(Icons.open_in_full_rounded,
+              color: Color(0xFF42A5F5), size: 20),
+        ),
         title: Text(routine.name,
             style: const TextStyle(
-                fontWeight: FontWeight.bold, fontSize: 16)),
-        subtitle: Text('${routine.exerciseCount}개의 운동',
-            style: const TextStyle(color: Colors.grey)),
+                fontWeight: FontWeight.bold,
+                fontSize: 15,
+                color: Colors.white)),
+        subtitle: Text(routine.exerciseCount != null
+            ? '${routine.exerciseCount}개의 운동' : '',
+            style:
+            TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12)),
         onTap: () => context.push('/routine/${routine.id}', extra: routine),
-        trailing: PopupMenuButton(
-          itemBuilder: (_) => [
-            const PopupMenuItem(value: 'edit', child: Text('수정')),
-            const PopupMenuItem(
-              value: 'delete',
-              child: Text('삭제', style: TextStyle(color: Colors.red)),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.chevron_right,
+                color: Colors.white.withOpacity(0.3), size: 20),
+            PopupMenuButton(
+              icon: Icon(Icons.more_vert,
+                  color: Colors.white.withOpacity(0.3), size: 20),
+              color: const Color(0xFF1E1225),
+              itemBuilder: (_) => [
+                const PopupMenuItem(
+                    value: 'edit',
+                    child: Text('수정',
+                        style: TextStyle(color: Colors.white))),
+                const PopupMenuItem(
+                  value: 'delete',
+                  child: Text('삭제',
+                      style: TextStyle(color: Colors.redAccent)),
+                ),
+              ],
+              onSelected: (value) async {
+                if (value == 'edit') {
+                  context
+                      .read<RoutineProvider>()
+                      .setSelectedFromRoutine(routine);
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => RoutineFormScreen(routine: routine),
+                    ),
+                  );
+                  context.read<RoutineProvider>().loadRoutines();
+                } else if (value == 'delete') {
+                  _showDeleteDialog(context);
+                }
+              },
             ),
           ],
-          onSelected: (value) async {
-            if (value == 'edit') {
-              context.read<RoutineProvider>().setSelectedFromRoutine(routine);
-              await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => RoutineFormScreen(routine: routine),
-                ),
-              );
-              context.read<RoutineProvider>().loadRoutines();
-            } else if (value == 'delete') {
-              _showDeleteDialog(context);
-            }
-          },
         ),
       ),
     );
@@ -413,20 +468,24 @@ class _RoutineCard extends StatelessWidget {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('루틴 삭제'),
-        content: const Text('삭제된 루틴은 복구할 수 없습니다.\n정말 삭제하시겠습니까?'),
+        backgroundColor: const Color(0xFF1E1225),
+        title: const Text('루틴 삭제',
+            style: TextStyle(color: Colors.white)),
+        content: const Text('삭제된 루틴은 복구할 수 없습니다.\n정말 삭제하시겠습니까?',
+            style: TextStyle(color: Colors.white70)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('취소'),
+            child: const Text('취소',
+                style: TextStyle(color: Colors.white54)),
           ),
           TextButton(
             onPressed: () {
               Navigator.pop(context);
               context.read<RoutineProvider>().deleteRoutine(routine.id);
             },
-            child:
-            const Text('삭제', style: TextStyle(color: Colors.red)),
+            child: const Text('삭제',
+                style: TextStyle(color: Colors.redAccent)),
           ),
         ],
       ),

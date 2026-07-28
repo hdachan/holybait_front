@@ -5,6 +5,7 @@ import '../../../data/models/routine_model.dart';
 import '../../../data/models/workout_model.dart';
 import '../../../data/repositories/routine_repository.dart';
 import '../../currency/provider/currency_provider.dart';
+import '../../../core/widgets/app_background.dart';
 
 class WorkoutLogScreen extends StatefulWidget {
   final List<RoutineExerciseModel> exercises;
@@ -85,22 +86,18 @@ class _WorkoutLogScreenState extends State<WorkoutLogScreen>
         return;
       }
 
-      debugPrint('📥 [$index] isToday=${response.isToday} sets=${response.sets.length}');
       if (mounted) {
         setState(() {
           if (response.isToday) {
-            // 오늘 기록 → 입력창 복원, 최근기록 섹션 비움
             _allSets[index] = _buildGroupsFromSets(response.sets);
             _allRecentSets[index] = [];
           } else {
-            // 전날 이전 → 빈 세트 1개, 최근기록 섹션에 표시
             _allSets[index] = [_SetGroup(setNumber: 1)];
             _allRecentSets[index] = response.sets;
           }
         });
       }
     } catch (e) {
-      debugPrint('❌ loadSets[$index] error: $e');
       if (mounted) {
         setState(() => _allSets[index] = [_SetGroup(setNumber: 1)]);
       }
@@ -141,8 +138,7 @@ class _WorkoutLogScreenState extends State<WorkoutLogScreen>
       if (groups.isNotEmpty) {
         group.main.weightController.text =
             groups.last.main.weightController.text;
-        group.main.repsController.text =
-            groups.last.main.repsController.text;
+        group.main.repsController.text = groups.last.main.repsController.text;
       }
       groups.add(group);
     });
@@ -172,17 +168,14 @@ class _WorkoutLogScreenState extends State<WorkoutLogScreen>
   }
 
   void _removeDropset(int index, int groupIndex, int dropIndex) {
-    setState(
-            () => _allSets[index][groupIndex].dropsets.removeAt(dropIndex));
+    setState(() => _allSets[index][groupIndex].dropsets.removeAt(dropIndex));
   }
 
-  // 빈 세트(무게/횟수 모두 0) 제외하고 payload 빌드
   List<Map<String, dynamic>> _buildPayload(List<_SetGroup> groups) {
     final result = <Map<String, dynamic>>[];
     for (final g in groups) {
       final w = double.tryParse(g.main.weightController.text) ?? 0;
       final r = int.tryParse(g.main.repsController.text) ?? 0;
-      // 무게와 횟수 둘 다 0이면 빈 세트 → 저장 안 함
       if (w == 0 && r == 0) continue;
       result.add({'weightKg': w, 'reps': r, 'isDropset': false});
       for (final d in g.dropsets) {
@@ -202,7 +195,6 @@ class _WorkoutLogScreenState extends State<WorkoutLogScreen>
 
     for (int i = 0; i < widget.exercises.length; i++) {
       final payload = _buildPayload(_allSets[i]);
-      // 빈 세트만 있으면 이 운동은 저장 스킵
       if (payload.isEmpty) continue;
 
       try {
@@ -211,9 +203,7 @@ class _WorkoutLogScreenState extends State<WorkoutLogScreen>
           payload,
         );
         totalGranted += result.grantedShoeCoin;
-        debugPrint('✅ save[$i] granted=${result.grantedShoeCoin}');
       } catch (e) {
-        debugPrint('❌ save[$i] error: $e');
         hasError = true;
       }
     }
@@ -230,8 +220,7 @@ class _WorkoutLogScreenState extends State<WorkoutLogScreen>
         ]),
         backgroundColor: Colors.red,
         behavior: SnackBarBehavior.floating,
-        shape:
-        RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       ));
       return;
@@ -246,20 +235,17 @@ class _WorkoutLogScreenState extends State<WorkoutLogScreen>
 
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Row(children: [
-        const Icon(Icons.check_circle_outline,
-            color: Colors.white, size: 18),
+        const Icon(Icons.check_circle_outline, color: Colors.white, size: 18),
         const SizedBox(width: 8),
         Text(totalGranted > 0
             ? '저장되었습니다.  👟 +$totalGranted'
             : '저장되었습니다.'),
       ]),
       behavior: SnackBarBehavior.floating,
-      shape:
-      RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       duration: const Duration(seconds: 2),
     ));
-    // 화면 유지, 입력값 그대로
   }
 
   @override
@@ -267,7 +253,11 @@ class _WorkoutLogScreenState extends State<WorkoutLogScreen>
     final currency = context.watch<CurrencyProvider>();
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
+        backgroundColor: const Color(0xFF160d1f),
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
@@ -281,28 +271,29 @@ class _WorkoutLogScreenState extends State<WorkoutLogScreen>
                 padding: const EdgeInsets.symmetric(
                     horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.2),
+                  color: const Color(0xFFF4A259).withOpacity(0.2),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: const Text('SS',
                     style: TextStyle(
                         fontSize: 11,
-                        color: Colors.orange,
+                        color: Color(0xFFF4A259),
                         fontWeight: FontWeight.bold)),
               ),
               const SizedBox(width: 6),
               const Text('슈퍼세트',
                   style: TextStyle(
-                      fontSize: 14, color: Colors.orange)),
+                      fontSize: 14, color: Color(0xFFF4A259))),
             ]),
             Text(
               widget.exercises.map((e) => e.exerciseName).join(' + '),
-              style: const TextStyle(fontSize: 13),
+              style: const TextStyle(fontSize: 13, color: Colors.white),
               overflow: TextOverflow.ellipsis,
             ),
           ],
         )
-            : Text(widget.exercises.first.exerciseName),
+            : Text(widget.exercises.first.exerciseName,
+            style: const TextStyle(color: Colors.white)),
         actions: [
           _CoinCapBadge(currency: currency),
           const SizedBox(width: 8),
@@ -311,87 +302,102 @@ class _WorkoutLogScreenState extends State<WorkoutLogScreen>
             ? TabBar(
           controller: _tabController,
           isScrollable: widget.exercises.length > 3,
+          indicatorColor: const Color(0xFFF4A259),
+          labelColor: const Color(0xFFF4A259),
+          unselectedLabelColor: Colors.white38,
           tabs: widget.exercises
               .map((e) => Tab(text: e.exerciseName))
               .toList(),
         )
             : null,
       ),
-      body: Stack(
-        children: [
-          !_isLoaded
-              ? const Center(child: CircularProgressIndicator())
-              : widget.isSuperset
-              ? TabBarView(
-            controller: _tabController,
-            children: List.generate(
-                widget.exercises.length,
-                    (i) => _buildEditor(i)),
-          )
-              : _buildEditor(0),
+      body: AppBackground(
+        child: Stack(
+          children: [
+            !_isLoaded
+                ? const Center(
+                child: CircularProgressIndicator(color: Colors.white))
+                : widget.isSuperset
+                ? TabBarView(
+              controller: _tabController,
+              children: List.generate(
+                  widget.exercises.length,
+                      (i) => _buildEditor(i)),
+            )
+                : _buildEditor(0),
 
-          if (_lastGranted > 0)
-            Positioned(
-              top: 60,
-              right: 20,
-              child: AnimatedBuilder(
-                animation: _coinAnim,
-                builder: (_, __) => FadeTransition(
-                  opacity: _coinFade,
-                  child: SlideTransition(
-                    position: _coinSlide,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.orange,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.orange.withOpacity(0.4),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          )
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text('👟',
-                              style: TextStyle(fontSize: 16)),
-                          const SizedBox(width: 4),
-                          Text('+$_lastGranted',
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16)),
-                        ],
+            // 코인 획득 애니메이션
+            if (_lastGranted > 0)
+              Positioned(
+                top: 60,
+                right: 20,
+                child: AnimatedBuilder(
+                  animation: _coinAnim,
+                  builder: (_, __) => FadeTransition(
+                    opacity: _coinFade,
+                    child: SlideTransition(
+                      position: _coinSlide,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF4A259),
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFF4A259).withOpacity(0.4),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            )
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text('👟', style: TextStyle(fontSize: 16)),
+                            const SizedBox(width: 4),
+                            Text('+$_lastGranted',
+                                style: const TextStyle(
+                                    color: Colors.black,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16)),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: ElevatedButton(
-            onPressed: _isSaving ? null : _save,
-            style: ElevatedButton.styleFrom(
-              minimumSize: const Size(double.infinity, 52),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-            ),
-            child: _isSaving
-                ? const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2))
-                : Text(
-              widget.isSuperset ? '슈퍼세트 저장하기' : '저장하기',
-              style: const TextStyle(fontSize: 16),
+      bottomNavigationBar: Container(
+        color: const Color(0xFF160d1f),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: ElevatedButton(
+              onPressed: _isSaving ? null : _save,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFF4A259),
+                foregroundColor: Colors.black,
+                disabledBackgroundColor: Colors.white.withOpacity(0.1),
+                minimumSize: const Size(double.infinity, 52),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                elevation: 0,
+              ),
+              child: _isSaving
+                  ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: Colors.black))
+                  : Text(
+                widget.isSuperset ? '슈퍼세트 저장하기' : '저장하기',
+                style: const TextStyle(
+                    fontSize: 16, fontWeight: FontWeight.bold),
+              ),
             ),
           ),
         ),
@@ -406,22 +412,24 @@ class _WorkoutLogScreenState extends State<WorkoutLogScreen>
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        const Padding(
-          padding: EdgeInsets.only(bottom: 8),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
           child: Row(children: [
-            SizedBox(width: 56),
+            const SizedBox(width: 56),
             Expanded(
                 child: Center(
                     child: Text('무게(kg)',
                         style: TextStyle(
-                            fontSize: 12, color: Colors.grey)))),
-            SizedBox(width: 8),
+                            fontSize: 12,
+                            color: Colors.white.withOpacity(0.4))))),
+            const SizedBox(width: 8),
             Expanded(
                 child: Center(
                     child: Text('횟수',
                         style: TextStyle(
-                            fontSize: 12, color: Colors.grey)))),
-            SizedBox(width: 40),
+                            fontSize: 12,
+                            color: Colors.white.withOpacity(0.4))))),
+            const SizedBox(width: 40),
           ]),
         ),
         ...groups.asMap().entries.map((e) => _SetGroupWidget(
@@ -432,15 +440,24 @@ class _WorkoutLogScreenState extends State<WorkoutLogScreen>
         )),
         OutlinedButton(
           onPressed: () => _addSet(index),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: const Color(0xFFF4A259),
+            side: const BorderSide(color: Color(0xFFF4A259)),
+          ),
           child: const Text('+ 세트 추가'),
         ),
-        const Divider(height: 32),
-        const Text('최근 기록',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+
+        // 최근 기록
+        Divider(height: 32, color: Colors.white.withOpacity(0.08)),
+        Text('최근 기록',
+            style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: Colors.white.withOpacity(0.8))),
         const SizedBox(height: 8),
         if (recent.isEmpty)
-          const Text('최근 기록이 없습니다.',
-              style: TextStyle(color: Colors.grey))
+          Text('최근 기록이 없습니다.',
+              style: TextStyle(color: Colors.white.withOpacity(0.3)))
         else
           ...recent.map((s) => Padding(
             padding: const EdgeInsets.symmetric(vertical: 4),
@@ -451,13 +468,14 @@ class _WorkoutLogScreenState extends State<WorkoutLogScreen>
                   s.isDropset ? '  └ DROP' : '${s.setNumber}세트',
                   style: TextStyle(
                     color: s.isDropset
-                        ? Colors.orange
-                        : Colors.black87,
+                        ? const Color(0xFFF4A259)
+                        : Colors.white,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 Text('${s.weightKg}KG · ${s.reps}회',
-                    style: const TextStyle(color: Colors.grey)),
+                    style: TextStyle(
+                        color: Colors.white.withOpacity(0.4))),
               ],
             ),
           )),
@@ -467,6 +485,7 @@ class _WorkoutLogScreenState extends State<WorkoutLogScreen>
   }
 }
 
+// ── 코인 캡 배지 ──
 class _CoinCapBadge extends StatelessWidget {
   final CurrencyProvider currency;
   const _CoinCapBadge({required this.currency});
@@ -478,8 +497,8 @@ class _CoinCapBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: isCapped
-            ? Colors.grey.withOpacity(0.12)
-            : Colors.orange.withOpacity(0.12),
+            ? Colors.white.withOpacity(0.06)
+            : const Color(0xFFF4A259).withOpacity(0.15),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
@@ -494,7 +513,9 @@ class _CoinCapBadge extends StatelessWidget {
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.bold,
-              color: isCapped ? Colors.grey : Colors.orange,
+              color: isCapped
+                  ? Colors.white.withOpacity(0.3)
+                  : const Color(0xFFF4A259),
             ),
           ),
         ],
@@ -538,24 +559,24 @@ class _SetGroupWidget extends StatelessWidget {
         _row('${group.setNumber}', group.main, false, onRemoveSet),
         ...group.dropsets.asMap().entries.map((e) => Padding(
           padding: const EdgeInsets.only(left: 16),
-          child: _row('DROP', e.value, true,
-                  () => onRemoveDropset(e.key)),
+          child: _row('DROP', e.value, true, () => onRemoveDropset(e.key)),
         )),
         Align(
           alignment: Alignment.centerLeft,
           child: TextButton(
             onPressed: onAddDropset,
-            child: const Text('↳ 드롭세트 추가',
-                style: TextStyle(fontSize: 13, color: Colors.grey)),
+            child: Text('↳ 드롭세트 추가',
+                style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.white.withOpacity(0.3))),
           ),
         ),
-        const Divider(),
+        Divider(color: Colors.white.withOpacity(0.08)),
       ],
     );
   }
 
-  Widget _row(
-      String label, _SetInput input, bool isDrop, VoidCallback onRemove) {
+  Widget _row(String label, _SetInput input, bool isDrop, VoidCallback onRemove) {
     return Row(
       children: [
         SizedBox(
@@ -565,26 +586,27 @@ class _SetGroupWidget extends StatelessWidget {
             padding: const EdgeInsets.symmetric(
                 horizontal: 6, vertical: 3),
             decoration: BoxDecoration(
-              color: Colors.orange.withOpacity(0.2),
+              color: const Color(0xFFF4A259).withOpacity(0.2),
               borderRadius: BorderRadius.circular(6),
             ),
             child: const Text('DROP',
                 style: TextStyle(
                     fontSize: 11,
-                    color: Colors.orange,
+                    color: Color(0xFFF4A259),
                     fontWeight: FontWeight.bold)),
           )
               : Text(label,
-              style: const TextStyle(fontWeight: FontWeight.bold)),
+              style: const TextStyle(
+                  fontWeight: FontWeight.bold, color: Colors.white)),
         ),
-        Expanded(
-            child: _Num(controller: input.weightController, hint: '20')),
+        Expanded(child: _Num(controller: input.weightController, hint: '20')),
         const SizedBox(width: 8),
-        Expanded(
-            child: _Num(controller: input.repsController, hint: '10')),
+        Expanded(child: _Num(controller: input.repsController, hint: '10')),
         IconButton(
           icon: Icon(Icons.cancel_outlined,
-              color: isDrop ? Colors.red.withOpacity(0.5) : Colors.grey,
+              color: isDrop
+                  ? Colors.red.withOpacity(0.5)
+                  : Colors.white.withOpacity(0.2),
               size: 20),
           onPressed: onRemove,
         ),
@@ -602,23 +624,21 @@ class _Num extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.green.withOpacity(0.08),
+        color: Colors.white.withOpacity(0.07),
         borderRadius: BorderRadius.circular(8),
       ),
       child: TextField(
         controller: controller,
-        keyboardType:
-        const TextInputType.numberWithOptions(decimal: true),
-        inputFormatters: [
-          FilteringTextInputFormatter.allow(RegExp(r'[\d.]'))
-        ],
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[\d.]'))],
         textAlign: TextAlign.center,
         textInputAction: TextInputAction.next,
+        style: const TextStyle(color: Colors.white),
         onTap: () => controller.selection = TextSelection(
             baseOffset: 0, extentOffset: controller.text.length),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: TextStyle(color: Colors.grey.shade400),
+          hintStyle: TextStyle(color: Colors.white.withOpacity(0.2)),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(vertical: 10),
         ),

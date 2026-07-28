@@ -17,7 +17,8 @@ class AuthRepository {
     return token != null;
   }
 
-  Future<void> loginWithGoogle() async {
+  // 로그인 → needsConsent 반환
+  Future<bool> loginWithGoogle() async {
     GoogleSignInAccount? googleUser;
 
     if (kIsWeb) {
@@ -30,7 +31,6 @@ class AuthRepository {
     if (googleUser == null) throw Exception('Google 로그인 취소');
 
     final googleAuth = await googleUser.authentication;
-
     final token = googleAuth.idToken ?? googleAuth.accessToken;
     if (token == null) throw Exception('토큰 없음');
 
@@ -40,13 +40,20 @@ class AuthRepository {
       accessToken:  authResponse.accessToken,
       refreshToken: authResponse.refreshToken,
     );
+
+    return authResponse.needsConsent;
   }
 
   Future<UserModel> getMe() => _remote.getMe();
 
-  // 닉네임 수정
   Future<UserModel> updateNickname(String nickname) =>
       _remote.updateNickname(nickname);
+
+  Future<void> completeConsent({required bool marketingAgreed}) =>
+      _remote.completeConsent(marketingAgreed: marketingAgreed);
+
+  Future<void> updateMarketingConsent(bool value) =>
+      _remote.updateMarketingConsent(value);
 
   Future<void> logout() async {
     final refreshToken = await _local.getRefreshToken();

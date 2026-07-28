@@ -3,6 +3,7 @@ import '../../../data/models/routine_model.dart';
 import '../../../data/repositories/routine_repository.dart';
 import 'exercise_pick_screen.dart';
 import 'workout_log_screen.dart';
+import '../../../core/widgets/app_background.dart';
 
 class RoutineDetailScreen extends StatefulWidget {
   final RoutineModel routine;
@@ -24,18 +25,14 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
   void initState() {
     super.initState();
     _initRows(widget.routine.exercises);
-    // 서버에서 최신 id 로 refresh (나갔다 들어와도 최신 id 유지)
     _refreshFromServer();
   }
 
-  // 서버에서 최신 루틴 데이터 fetch → _rows 업데이트
   Future<void> _refreshFromServer() async {
     try {
       final fresh = await _repository.getRoutine(widget.routine.id);
       if (mounted) setState(() => _initRows(fresh.exercises));
-    } catch (_) {
-      // 실패해도 기존 데이터 그대로 사용
-    }
+    } catch (_) {}
   }
 
   void _initRows(List<RoutineExerciseModel> exercises) {
@@ -99,7 +96,6 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
     return exercises;
   }
 
-  // + 버튼으로 운동 추가 → 즉시 저장 → 서버 응답으로 _rows 업데이트
   Future<void> _addExercisesAndSave(List exercises) async {
     setState(() => _isSaving = true);
     try {
@@ -201,7 +197,6 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
     ));
   }
 
-  // 편집 저장 → 서버 응답으로 _rows 업데이트 (새 id 반영)
   Future<void> _saveChanges() async {
     setState(() => _isSaving = true);
     try {
@@ -213,7 +208,7 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
           _isEditMode = false;
           _selecting.clear();
           _rowsSnapshot = null;
-          _initRows(saved.exercises); // 서버 응답의 실제 id 로 교체
+          _initRows(saved.exercises);
           _isSaving = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -265,29 +260,38 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
         if (!didPop && _isEditMode) _exitEditMode();
       },
       child: Scaffold(
+        backgroundColor: Colors.transparent,
         appBar: AppBar(
+          backgroundColor: const Color(0xFF160d1f),
+          elevation: 0,
+          iconTheme: const IconThemeData(color: Colors.white),
           title: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(widget.routine.name,
                   style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.bold)),
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white)),
               Text('총 $_totalExerciseCount개의 운동',
-                  style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                  style: TextStyle(
+                      fontSize: 12, color: Colors.white.withOpacity(0.4))),
             ],
           ),
           actions: [
             if (!_isEditMode)
               _isSaving
-                  ? const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
+                  ? Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: SizedBox(
                     width: 20,
                     height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2)),
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white.withOpacity(0.6))),
               )
                   : IconButton(
-                icon: const Icon(Icons.add),
+                icon: const Icon(Icons.add, color: Colors.white),
                 onPressed: () async {
                   await Navigator.push(
                     context,
@@ -309,19 +313,20 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
                 key: const ValueKey('save'),
                 onPressed: _isSaving ? null : _saveChanges,
                 icon: _isSaving
-                    ? const SizedBox(
+                    ? SizedBox(
                     width: 16,
                     height: 16,
-                    child:
-                    CircularProgressIndicator(strokeWidth: 2))
-                    : const Icon(Icons.check, size: 18),
-                label: const Text('저장'),
-                style: TextButton.styleFrom(
-                    foregroundColor: Colors.blue),
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white.withOpacity(0.6)))
+                    : const Icon(Icons.check,
+                    size: 18, color: Color(0xFFF4A259)),
+                label: const Text('저장',
+                    style: TextStyle(color: Color(0xFFF4A259))),
               )
                   : IconButton(
                 key: const ValueKey('edit'),
-                icon: const Icon(Icons.tune_rounded),
+                icon: const Icon(Icons.tune_rounded, color: Colors.white),
                 onPressed: () => setState(() {
                   _isEditMode = true;
                   _selecting.clear();
@@ -331,9 +336,11 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
             ),
           ],
         ),
-        body: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 250),
-          child: _isEditMode ? _buildEditMode() : _buildNormalMode(),
+        body: AppBackground(
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 250),
+            child: _isEditMode ? _buildEditMode() : _buildNormalMode(),
+          ),
         ),
       ),
     );
@@ -341,15 +348,17 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
 
   Widget _buildNormalMode() {
     if (_rows.isEmpty) {
-      return const Center(
-        key: ValueKey('empty'),
+      return Center(
+        key: const ValueKey('empty'),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.fitness_center, size: 48, color: Colors.grey),
-            SizedBox(height: 12),
+            Icon(Icons.fitness_center,
+                size: 48, color: Colors.white.withOpacity(0.2)),
+            const SizedBox(height: 12),
             Text('운동을 추가해보세요',
-                style: TextStyle(color: Colors.grey, fontSize: 15)),
+                style: TextStyle(
+                    color: Colors.white.withOpacity(0.4), fontSize: 15)),
           ],
         ),
       );
@@ -377,8 +386,7 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(
-                  builder: (_) =>
-                      WorkoutLogScreen.superset(ss.exercises)),
+                  builder: (_) => WorkoutLogScreen.superset(ss.exercises)),
             ),
           );
         }
@@ -393,8 +401,7 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
         _buildBanner(),
         Expanded(
           child: ReorderableListView.builder(
-            padding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             buildDefaultDragHandles: false,
             itemCount: _rows.length,
             onReorder: (oldIndex, newIndex) {
@@ -411,9 +418,7 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
                 return Dismissible(
                   key: ValueKey('s_${row.exercise.exerciseId}_$i'),
                   direction: DismissDirection.endToStart,
-                  dismissThresholds: const {
-                    DismissDirection.endToStart: 0.35
-                  },
+                  dismissThresholds: const {DismissDirection.endToStart: 0.35},
                   background: Container(
                     alignment: Alignment.centerRight,
                     padding: const EdgeInsets.only(right: 24),
@@ -425,12 +430,10 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
                     child: const Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.delete_outline,
-                            color: Colors.white, size: 22),
+                        Icon(Icons.delete_outline, color: Colors.white, size: 22),
                         SizedBox(height: 2),
                         Text('삭제',
-                            style: TextStyle(
-                                color: Colors.white, fontSize: 11)),
+                            style: TextStyle(color: Colors.white, fontSize: 11)),
                       ],
                     ),
                   ),
@@ -465,36 +468,35 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
       child: _selecting.isEmpty
           ? Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(
-            horizontal: 16, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          color: Colors.grey.withOpacity(0.08),
+          color: Colors.white.withOpacity(0.04),
           border: Border(
               bottom: BorderSide(
-                  color: Colors.grey.withOpacity(0.15), width: 1)),
+                  color: Colors.white.withOpacity(0.08), width: 1)),
         ),
         child: Row(
           children: [
             Icon(Icons.info_outline,
-                size: 14, color: Colors.grey.shade500),
+                size: 14, color: Colors.white.withOpacity(0.3)),
             const SizedBox(width: 6),
             Text(
               '← 스와이프 삭제  ·  ○ 탭 후 슈퍼세트 묶기  ·  ≡ 드래그 순서변경',
-              style:
-              TextStyle(fontSize: 11, color: Colors.grey.shade500),
+              style: TextStyle(
+                  fontSize: 11, color: Colors.white.withOpacity(0.3)),
             ),
           ],
         ),
       )
           : Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(
-            horizontal: 16, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          color: Colors.blue.withOpacity(0.07),
+          color: const Color(0xFFF4A259).withOpacity(0.07),
           border: Border(
               bottom: BorderSide(
-                  color: Colors.blue.withOpacity(0.2), width: 1)),
+                  color: const Color(0xFFF4A259).withOpacity(0.2),
+                  width: 1)),
         ),
         child: Row(
           children: [
@@ -502,33 +504,31 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
               padding: const EdgeInsets.symmetric(
                   horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                  color: Colors.blue,
+                  color: const Color(0xFFF4A259),
                   borderRadius: BorderRadius.circular(20)),
               child: Text('${_selecting.length}개 선택',
                   style: const TextStyle(
                       fontSize: 12,
-                      color: Colors.white,
+                      color: Colors.black,
                       fontWeight: FontWeight.bold)),
             ),
             const Spacer(),
             TextButton(
               onPressed: () => setState(() => _selecting.clear()),
               style: TextButton.styleFrom(
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 8),
-                  foregroundColor: Colors.grey),
-              child: const Text('취소',
-                  style: TextStyle(fontSize: 13)),
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  foregroundColor: Colors.white.withOpacity(0.5)),
+              child: const Text('취소', style: TextStyle(fontSize: 13)),
             ),
             const SizedBox(width: 4),
             FilledButton.icon(
-              onPressed:
-              _selecting.length >= 2 ? _applySuperset : null,
+              onPressed: _selecting.length >= 2 ? _applySuperset : null,
               icon: const Icon(Icons.link_rounded, size: 16),
               label: const Text('슈퍼세트로 묶기',
                   style: TextStyle(fontSize: 13)),
               style: FilledButton.styleFrom(
-                backgroundColor: Colors.orange,
+                backgroundColor: const Color(0xFFF4A259),
+                foregroundColor: Colors.black,
                 padding: const EdgeInsets.symmetric(
                     horizontal: 14, vertical: 8),
               ),
@@ -553,6 +553,7 @@ class _SupersetItem extends _RowItem {
   _SupersetItem({required this.exercises, required this.groupId});
 }
 
+// ── 일반 단일 카드 ──
 class _SingleCard extends StatelessWidget {
   final _SingleItem item;
   final VoidCallback onTap;
@@ -560,43 +561,45 @@ class _SingleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: 10),
-      elevation: 0,
-      shape: RoundedRectangleBorder(
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E1225),
         borderRadius: BorderRadius.circular(14),
-        side: BorderSide(color: Colors.grey.withOpacity(0.15)),
+        border: Border.all(color: Colors.white.withOpacity(0.06)),
       ),
       child: ListTile(
-        contentPadding:
-        const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         leading: Container(
-          width: 40,
-          height: 40,
+          width: 44,
+          height: 44,
           decoration: BoxDecoration(
-            color: Colors.blue.withOpacity(0.08),
+            color: const Color(0xFF1A3A4A),
             borderRadius: BorderRadius.circular(10),
           ),
-          child: const Icon(Icons.fitness_center_rounded,
-              size: 20, color: Colors.blue),
+          child: const Icon(Icons.open_in_full_rounded,
+              size: 20, color: Color(0xFF42A5F5)),
         ),
         title: Text(item.exercise.exerciseName,
             style: const TextStyle(
-                fontWeight: FontWeight.w600, fontSize: 15)),
+                fontWeight: FontWeight.w600,
+                fontSize: 15,
+                color: Colors.white)),
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 2),
           child: Text(item.exercise.target,
               style: TextStyle(
-                  fontSize: 12, color: Colors.grey.shade500)),
+                  fontSize: 12, color: Colors.white.withOpacity(0.4))),
         ),
-        trailing:
-        const Icon(Icons.chevron_right, color: Colors.grey),
+        trailing: Icon(Icons.chevron_right,
+            color: Colors.white.withOpacity(0.3)),
         onTap: onTap,
       ),
     );
   }
 }
 
+// ── 슈퍼세트 카드 ──
 class _SupersetCard extends StatelessWidget {
   final _SupersetItem item;
   final VoidCallback onTap;
@@ -604,14 +607,13 @@ class _SupersetCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: 10),
-      elevation: 0,
-      shape: RoundedRectangleBorder(
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E1225),
         borderRadius: BorderRadius.circular(14),
-        side: BorderSide(color: Colors.orange.withOpacity(0.3)),
+        border: Border.all(color: const Color(0xFFF4A259).withOpacity(0.3)),
       ),
-      color: Colors.orange.withOpacity(0.04),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(14),
@@ -625,12 +627,12 @@ class _SupersetCard extends StatelessWidget {
                     horizontal: 8, vertical: 4),
                 margin: const EdgeInsets.only(right: 12, top: 2),
                 decoration: BoxDecoration(
-                    color: Colors.orange,
+                    color: const Color(0xFFF4A259),
                     borderRadius: BorderRadius.circular(8)),
                 child: const Text('SS',
                     style: TextStyle(
                         fontSize: 11,
-                        color: Colors.white,
+                        color: Colors.black,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 0.5)),
               ),
@@ -646,18 +648,18 @@ class _SupersetCard extends StatelessWidget {
                               width: 3,
                               height: 16,
                               decoration: BoxDecoration(
-                                  color: Colors.orange,
-                                  borderRadius:
-                                  BorderRadius.circular(2))),
+                                  color: const Color(0xFFF4A259),
+                                  borderRadius: BorderRadius.circular(2))),
                           const SizedBox(width: 8),
                           Text(ex.exerciseName,
                               style: const TextStyle(
                                   fontWeight: FontWeight.w600,
-                                  fontSize: 14)),
+                                  fontSize: 14,
+                                  color: Colors.white)),
                           const SizedBox(width: 6),
                           Text(ex.target,
                               style: TextStyle(
-                                  color: Colors.grey.shade500,
+                                  color: Colors.white.withOpacity(0.4),
                                   fontSize: 12)),
                         ],
                       ),
@@ -665,8 +667,8 @@ class _SupersetCard extends StatelessWidget {
                   }).toList(),
                 ),
               ),
-              const Icon(Icons.chevron_right,
-                  color: Colors.grey, size: 20),
+              Icon(Icons.chevron_right,
+                  color: Colors.white.withOpacity(0.3), size: 20),
             ],
           ),
         ),
@@ -675,6 +677,7 @@ class _SupersetCard extends StatelessWidget {
   }
 }
 
+// ── 편집 단일 카드 ──
 class _EditSingleCard extends StatelessWidget {
   final int index;
   final _SingleItem item;
@@ -695,19 +698,18 @@ class _EditSingleCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
         color: isSelected
-            ? Colors.blue.withOpacity(0.07)
-            : Theme.of(context).cardColor,
+            ? const Color(0xFFF4A259).withOpacity(0.1)
+            : const Color(0xFF1E1225),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: isSelected
-              ? Colors.blue.withOpacity(0.4)
-              : Colors.grey.withOpacity(0.15),
+              ? const Color(0xFFF4A259).withOpacity(0.4)
+              : Colors.white.withOpacity(0.06),
           width: isSelected ? 1.5 : 1,
         ),
       ),
       child: ListTile(
-        contentPadding:
-        const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         leading: GestureDetector(
           onTap: onSelect,
           child: AnimatedContainer(
@@ -718,32 +720,35 @@ class _EditSingleCard extends StatelessWidget {
               shape: BoxShape.circle,
               border: Border.all(
                   color: isSelected
-                      ? Colors.blue
-                      : Colors.grey.shade400,
+                      ? const Color(0xFFF4A259)
+                      : Colors.white.withOpacity(0.3),
                   width: 2),
-              color: isSelected ? Colors.blue : Colors.transparent,
+              color: isSelected
+                  ? const Color(0xFFF4A259)
+                  : Colors.transparent,
             ),
             child: isSelected
-                ? const Icon(Icons.check,
-                size: 16, color: Colors.white)
+                ? const Icon(Icons.check, size: 16, color: Colors.black)
                 : null,
           ),
         ),
         title: Text(item.exercise.exerciseName,
             style: const TextStyle(
-                fontWeight: FontWeight.w600, fontSize: 15)),
+                fontWeight: FontWeight.w600,
+                fontSize: 15,
+                color: Colors.white)),
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 2),
           child: Text(item.exercise.target,
               style: TextStyle(
-                  fontSize: 12, color: Colors.grey.shade500)),
+                  fontSize: 12, color: Colors.white.withOpacity(0.4))),
         ),
         trailing: ReorderableDragStartListener(
           index: index,
           child: Padding(
             padding: const EdgeInsets.all(8.0),
             child: Icon(Icons.drag_handle_rounded,
-                color: Colors.grey.shade400, size: 22),
+                color: Colors.white.withOpacity(0.3), size: 22),
           ),
         ),
       ),
@@ -751,6 +756,7 @@ class _EditSingleCard extends StatelessWidget {
   }
 }
 
+// ── 편집 슈퍼세트 카드 ──
 class _EditSupersetCard extends StatelessWidget {
   final int index;
   final _SupersetItem item;
@@ -768,9 +774,9 @@ class _EditSupersetCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: Colors.orange.withOpacity(0.04),
+        color: const Color(0xFF1E1225),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.orange.withOpacity(0.3)),
+        border: Border.all(color: const Color(0xFFF4A259).withOpacity(0.3)),
       ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
@@ -784,19 +790,19 @@ class _EditSupersetCard extends StatelessWidget {
                   child: Padding(
                     padding: const EdgeInsets.only(right: 8),
                     child: Icon(Icons.drag_handle_rounded,
-                        color: Colors.grey.shade400, size: 22),
+                        color: Colors.white.withOpacity(0.3), size: 22),
                   ),
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(
                       horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                      color: Colors.orange,
+                      color: const Color(0xFFF4A259),
                       borderRadius: BorderRadius.circular(8)),
                   child: Text('SS  ${item.exercises.length}개',
                       style: const TextStyle(
                           fontSize: 11,
-                          color: Colors.white,
+                          color: Colors.black,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 0.5)),
                 ),
@@ -808,12 +814,12 @@ class _EditSupersetCard extends StatelessWidget {
                         horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       border: Border.all(
-                          color: Colors.orange.withOpacity(0.5)),
+                          color: const Color(0xFFF4A259).withOpacity(0.5)),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: const Text('해제',
                         style: TextStyle(
-                            color: Colors.orange,
+                            color: Color(0xFFF4A259),
                             fontSize: 12,
                             fontWeight: FontWeight.w600)),
                   ),
@@ -829,7 +835,7 @@ class _EditSupersetCard extends StatelessWidget {
                     width: 3,
                     height: 36,
                     decoration: BoxDecoration(
-                        color: Colors.orange,
+                        color: const Color(0xFFF4A259),
                         borderRadius: BorderRadius.circular(2)),
                   ),
                   const SizedBox(width: 12),
@@ -840,10 +846,11 @@ class _EditSupersetCard extends StatelessWidget {
                         Text(ex.exerciseName,
                             style: const TextStyle(
                                 fontWeight: FontWeight.w600,
-                                fontSize: 14)),
+                                fontSize: 14,
+                                color: Colors.white)),
                         Text(ex.target,
                             style: TextStyle(
-                                color: Colors.grey.shade500,
+                                color: Colors.white.withOpacity(0.4),
                                 fontSize: 12)),
                       ],
                     ),
@@ -855,11 +862,11 @@ class _EditSupersetCard extends StatelessWidget {
               children: [
                 const SizedBox(width: 4),
                 Icon(Icons.swipe_left_outlined,
-                    size: 13, color: Colors.grey.shade400),
+                    size: 13, color: Colors.white.withOpacity(0.2)),
                 const SizedBox(width: 4),
                 Text('해제 후 스와이프로 삭제',
                     style: TextStyle(
-                        fontSize: 11, color: Colors.grey.shade400)),
+                        fontSize: 11, color: Colors.white.withOpacity(0.2))),
               ],
             ),
           ],
