@@ -25,7 +25,7 @@ class _SplashScreenState extends State<SplashScreen> {
     if (status == AuthStatus.authenticated) {
       context.go('/home');
     } else {
-      context.go('/login');
+      context.go('/onboarding');
     }
   }
 

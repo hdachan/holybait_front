@@ -32,6 +32,9 @@ dependencies:
   pedometer: ^4.1.1
   shared_preferences: ^2.2.2
 
+  #svg
+  flutter_svg: ^2.0.9
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -39,8 +42,21 @@ dev_dependencies:
 
 flutter:
   assets:
-    - assets/images/characters/bear/
+    - assets/images/space/space_bg.png
+    - assets/images/characters/knight/
+    - assets/images/characters/holy/
     - assets/images/monsters/monster1/
     - assets/images/characters/dragon/
     - assets/images/space/
+    - assets/images/ui/
+    - assets/images/ui/island/
+    - assets/images/ui/select_ui.svg
+    - assets/images/ui/Characte_background/
+    - assets/images/ui/Characte_slot/
+    - assets/images/space/planet1/
+    - assets/images/ui/home_background/
+    - assets/images/onboarding/
+    - assets/images/onboarding/icon/
+    - assets/images/ui/icon/
+
   uses-material-design: true
