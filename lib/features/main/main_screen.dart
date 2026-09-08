@@ -19,7 +19,6 @@ class MainScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final main = context.watch<MainProvider>();
-
     return Scaffold(
       backgroundColor: const Color(0xFF0e0a1a),
       body: IndexedStack(
@@ -44,17 +43,25 @@ class _BottomBar extends StatelessWidget {
   });
 
   static const _items = [
-    _BarItem(icon: Icons.home_rounded, label: '홈'),
-    _BarItem(icon: Icons.public_rounded, label: '모험'),
-    _BarItem(icon: Icons.person_rounded, label: '캐릭터'),
-    _BarItem(icon: Icons.settings_rounded, label: '설정'),
+    _BarItem(iconN: 'assets/images/onboarding/icon/icon_home_n.png',
+        iconS: 'assets/images/onboarding/icon/icon_home_s.png',
+        label: '홈'),
+    _BarItem(iconN: 'assets/images/onboarding/icon/icon_map_n.png',
+        iconS: 'assets/images/onboarding/icon/icon_map_s.png',
+        label: '모험'),
+    _BarItem(iconN: 'assets/images/onboarding/icon/icon_c_n.png',
+        iconS: 'assets/images/onboarding/icon/icon_c_s.png',
+        label: '캐릭터'),
+    _BarItem(iconN: 'assets/images/onboarding/icon/icon_setting_n.png',
+        iconS: 'assets/images/onboarding/icon/icon_setting_s.png',
+        label: '설정'),
   ];
 
   @override
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF160d1f),
+        color: const Color(0xFF000000),
         border: Border(
           top: BorderSide(
             color: Colors.white.withOpacity(0.08),
@@ -75,34 +82,74 @@ class _BottomBar extends StatelessWidget {
                 child: GestureDetector(
                   onTap: () => onTap(i),
                   behavior: HitTestBehavior.opaque,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          item.icon,
-                          size: 24,
-                          color: isSelected
-                              ? const Color(0xFFF4A259)
-                              : Colors.white.withOpacity(0.4),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          item.label,
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: isSelected
-                                ? FontWeight.bold
-                                : FontWeight.normal,
-                            color: isSelected
-                                ? const Color(0xFFF4A259)
-                                : Colors.white.withOpacity(0.4),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    clipBehavior: Clip.none,
+                    children: [
+                      // 글로우 효과 (아이콘 바로 뒤, 크게)
+                      if (isSelected)
+                        Positioned(
+                          top: 4,
+                          left: 0,
+                          right: 0,
+                          child: Center(
+                            child: Opacity(
+                              opacity: 0.6,
+                              child: Image.asset(
+                                'assets/images/onboarding/Bottom_Glow_Effect.png',
+                                width: 48,
+                                height: 48,
+                                fit: BoxFit.fill,
+                              ),
+                            ),
                           ),
                         ),
-                      ],
-                    ),
+
+                      // 아이콘 + 텍스트
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Image.asset(
+                              isSelected ? item.iconS : item.iconN,
+                              width: 24,
+                              height: 24,
+                              fit: BoxFit.contain,
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              item.label,
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: isSelected
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                                color: isSelected
+                                    ? const Color(0xFFF4A259)
+                                    : Colors.white.withOpacity(0.4),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // 하단 인디케이터
+                      if (isSelected)
+                        Positioned(
+                          bottom: 0,
+                          left: 0,
+                          right: 0,
+                          child: Align(
+                            alignment: Alignment.bottomCenter,
+                            child: Image.asset(
+                              'assets/images/onboarding/Bottom_Indicator_Light.png',
+                              width: 36,
+                              fit: BoxFit.fitWidth,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
               );
@@ -115,7 +162,8 @@ class _BottomBar extends StatelessWidget {
 }
 
 class _BarItem {
-  final IconData icon;
+  final String iconN;
+  final String iconS;
   final String label;
-  const _BarItem({required this.icon, required this.label});
+  const _BarItem({required this.iconN, required this.iconS, required this.label});
 }

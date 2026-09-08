@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../../auth/provider/auth_provider.dart';
-import '../../../core/widgets/app_background.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -64,113 +63,120 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 color: Colors.white)),
         centerTitle: true,
       ),
-      body: AppBackground(
-        child: ListView(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          children: [
-            // ── 계정 정보 ──
-            _SectionHeader(title: '계정 정보'),
-            _Card(children: [
-              _InfoTile(label: '닉네임', value: user?.nickname ?? '-'),
-              _InfoTile(label: '이메일', value: user?.email ?? '-'),
-              _InfoTile(label: '로그인 방식', value: user?.provider ?? '-'),
-              _InfoTile(label: '가입일', value: _formatDate(user?.createdAt)),
-            ]),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.asset(
+            'assets/images/ui/home_background/home_bg.png',
+            fit: BoxFit.cover,
+          ),
+          ListView(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            children: [
+              // ── 계정 정보 ──
+              _SectionHeader(title: '계정 정보'),
+              _Card(children: [
+                _InfoTile(label: '닉네임', value: user?.nickname ?? '-'),
+                _InfoTile(label: '이메일', value: user?.email ?? '-'),
+                _InfoTile(label: '로그인 방식', value: user?.provider ?? '-'),
+                _InfoTile(label: '가입일', value: _formatDate(user?.createdAt)),
+              ]),
 
-            // ── 계정 ──
-            _SectionHeader(title: '계정'),
-            _Card(children: [
-              _ActionTile(
-                icon: Icons.person_outline,
-                label: '프로필 수정',
-                onTap: () => _showEditNicknameDialog(context),
-              ),
-              _SwitchTile(
-                icon: Icons.notifications_outlined,
-                label: '알림 받기',
-                value: _notificationEnabled,
-                onChanged: (v) => setState(() => _notificationEnabled = v),
-              ),
-              _SwitchTile(
-                icon: Icons.campaign_outlined,
-                label: '마케팅 정보 수신',
-                value: marketingAgreed,
-                onChanged: (v) async {
-                  await auth.updateMarketingConsent(v);
-                },
-              ),
-            ]),
+              // ── 계정 ──
+              _SectionHeader(title: '계정'),
+              _Card(children: [
+                _ActionTile(
+                  icon: Icons.person_outline,
+                  label: '프로필 수정',
+                  onTap: () => _showEditNicknameDialog(context),
+                ),
+                _SwitchTile(
+                  icon: Icons.notifications_outlined,
+                  label: '알림 받기',
+                  value: _notificationEnabled,
+                  onChanged: (v) => setState(() => _notificationEnabled = v),
+                ),
+                _SwitchTile(
+                  icon: Icons.campaign_outlined,
+                  label: '마케팅 정보 수신',
+                  value: marketingAgreed,
+                  onChanged: (v) async {
+                    await auth.updateMarketingConsent(v);
+                  },
+                ),
+              ]),
 
-            // ── 개인정보 ──
-            _SectionHeader(title: '개인정보'),
-            _Card(children: [
-              _ActionTile(
-                icon: Icons.privacy_tip_outlined,
-                label: '개인정보 처리방침',
-                onTap: () => _openLink('https://aquamarine-armchair-686.notion.site/HolyHabit-3a7d8a6d4321801dbb54d54e902323a3'),
-              ),
-              _ActionTile(
-                icon: Icons.description_outlined,
-                label: '이용약관',
-                onTap: () => _openLink('https://aquamarine-armchair-686.notion.site/HolyHabit-3a7d8a6d432180d5b335f42bafa9b543'),
-              ),
-            ]),
+              // ── 개인정보 ──
+              _SectionHeader(title: '개인정보'),
+              _Card(children: [
+                _ActionTile(
+                  icon: Icons.privacy_tip_outlined,
+                  label: '개인정보 처리방침',
+                  onTap: () => _openLink('https://aquamarine-armchair-686.notion.site/HolyHabit-3a7d8a6d4321801dbb54d54e902323a3'),
+                ),
+                _ActionTile(
+                  icon: Icons.description_outlined,
+                  label: '이용약관',
+                  onTap: () => _openLink('https://aquamarine-armchair-686.notion.site/HolyHabit-3a7d8a6d432180d5b335f42bafa9b543'),
+                ),
+              ]),
 
-            // ── 고객 지원 ──
-            _SectionHeader(title: '고객 지원'),
-            _Card(children: [
-              _ActionTile(
-                icon: Icons.help_outline,
-                label: 'FAQ',
-                onTap: () => _openLink('https://example.com/faq'),
-              ),
-              _ActionTile(
-                icon: Icons.bug_report_outlined,
-                label: '문의하기 / 버그 제보',
-                onTap: () => _openLink('https://example.com/contact'),
-              ),
-              _ActionTile(
-                icon: Icons.feedback_outlined,
-                label: '의견 보내기',
-                onTap: () => _openLink('https://example.com/feedback'),
-              ),
-            ]),
+              // ── 고객 지원 ──
+              _SectionHeader(title: '고객 지원'),
+              _Card(children: [
+                _ActionTile(
+                  icon: Icons.help_outline,
+                  label: 'FAQ',
+                  onTap: () => _openLink('https://example.com/faq'),
+                ),
+                _ActionTile(
+                  icon: Icons.bug_report_outlined,
+                  label: '문의하기 / 버그 제보',
+                  onTap: () => _openLink('https://example.com/contact'),
+                ),
+                _ActionTile(
+                  icon: Icons.feedback_outlined,
+                  label: '의견 보내기',
+                  onTap: () => _openLink('https://example.com/feedback'),
+                ),
+              ]),
 
-            // ── 앱 정보 ──
-            _SectionHeader(title: '앱 정보'),
-            _Card(children: [
-              _InfoTile(
-                  label: '앱 버전',
-                  value: _appVersion.isEmpty ? '-' : _appVersion),
-              _ActionTile(
-                icon: Icons.history,
-                label: '업데이트 내역',
-                onTap: () => _showUpdateHistory(context),
-              ),
-            ]),
+              // ── 앱 정보 ──
+              _SectionHeader(title: '앱 정보'),
+              _Card(children: [
+                _InfoTile(
+                    label: '앱 버전',
+                    value: _appVersion.isEmpty ? '-' : _appVersion),
+                _ActionTile(
+                  icon: Icons.history,
+                  label: '업데이트 내역',
+                  onTap: () => _showUpdateHistory(context),
+                ),
+              ]),
 
-            // ── 계정 관리 ──
-            _SectionHeader(title: '계정 관리'),
-            _Card(children: [
-              ListTile(
-                leading: const Icon(Icons.logout,
-                    color: Color(0xFFF4A259)),
-                title: const Text('로그아웃',
-                    style: TextStyle(color: Colors.white)),
-                onTap: () => _showLogoutDialog(context),
-              ),
-              ListTile(
-                leading: const Icon(Icons.person_remove,
-                    color: Colors.redAccent),
-                title: const Text('회원 탈퇴',
-                    style: TextStyle(color: Colors.redAccent)),
-                onTap: () => _showWithdrawDialog(context),
-              ),
-            ]),
+              // ── 계정 관리 ──
+              _SectionHeader(title: '계정 관리'),
+              _Card(children: [
+                ListTile(
+                  leading: const Icon(Icons.logout,
+                      color: Color(0xFFF4A259)),
+                  title: const Text('로그아웃',
+                      style: TextStyle(color: Colors.white)),
+                  onTap: () => _showLogoutDialog(context),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.person_remove,
+                      color: Colors.redAccent),
+                  title: const Text('회원 탈퇴',
+                      style: TextStyle(color: Colors.redAccent)),
+                  onTap: () => _showWithdrawDialog(context),
+                ),
+              ]),
 
-            const SizedBox(height: 24),
-          ],
-        ),
+              const SizedBox(height: 24),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -397,9 +403,16 @@ class _Card extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E1225),
+        color: const Color(0xFF0D0A1A).withOpacity(0.70),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.06)),
+        border: Border.all(color: const Color(0xFF8B5E3C).withOpacity(0.5), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFF4A259).withOpacity(0.08),
+            blurRadius: 12,
+            spreadRadius: 2,
+          ),
+        ],
       ),
       child: Column(
         children: List.generate(children.length * 2 - 1, (i) {
@@ -452,7 +465,7 @@ class _ActionTile extends StatelessWidget {
       title: Text(label,
           style: const TextStyle(fontSize: 14, color: Colors.white)),
       trailing: Icon(Icons.chevron_right,
-          color: Colors.white.withOpacity(0.3), size: 20),
+          color: const Color(0xFFF4A259).withOpacity(0.7), size: 20),
       onTap: onTap,
     );
   }

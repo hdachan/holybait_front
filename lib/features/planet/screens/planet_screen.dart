@@ -1,10 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 import '../provider/planet_provider.dart';
 import '../../../data/models/planet_model.dart';
 import 'planet_detail_screen.dart';
 import '../../currency/provider/currency_provider.dart';
-import '../../../core/widgets/app_background.dart';
 import '../../../core/widgets/currency_badge.dart';
 
 class PlanetScreen extends StatefulWidget {
@@ -15,8 +16,7 @@ class PlanetScreen extends StatefulWidget {
 }
 
 class _PlanetScreenState extends State<PlanetScreen> {
-  final PageController _pageController =
-  PageController(viewportFraction: 0.85);
+  final PageController _pageController = PageController(viewportFraction: 0.85);
   int _currentPage = 0;
 
   @override
@@ -38,22 +38,12 @@ class _PlanetScreenState extends State<PlanetScreen> {
     super.dispose();
   }
 
-  String _fmt(int n) {
-    if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
-    if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}K';
-    return n.toString();
-  }
-
-  String _assetPath(String? imageKey) =>
-      'assets/images/space/${imageKey ?? 'planet1'}.png';
-
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<PlanetProvider>();
-    final currency = context.watch<CurrencyProvider>();
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: Colors.black,
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -62,19 +52,19 @@ class _PlanetScreenState extends State<PlanetScreen> {
         leading: const CurrencyBadge(),
         leadingWidth: 140,
         title: const Text('행성 선택',
-            style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-                color: Colors.white)),
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)),
         centerTitle: true,
       ),
-      body: AppBackground(
-        child: provider.isLoading
-            ? const Center(
-            child: CircularProgressIndicator(color: Colors.white))
-            : provider.planets.isEmpty
-            ? _buildEmpty()
-            : _buildCarousel(provider.planets),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.asset('assets/images/space/space_bg.png', fit: BoxFit.cover),
+          provider.isLoading
+              ? const Center(child: CircularProgressIndicator(color: Colors.white))
+              : provider.planets.isEmpty
+              ? _buildEmpty()
+              : _buildCarousel(provider.planets),
+        ],
       ),
     );
   }
@@ -82,11 +72,9 @@ class _PlanetScreenState extends State<PlanetScreen> {
   Widget _buildCarousel(List<PlanetModel> planets) {
     return Column(
       children: [
-        const Spacer(flex: 1),
-
-        // 행성 캐러셀
+        const SizedBox(height: 100),
         SizedBox(
-          height: MediaQuery.of(context).size.height * 0.55,
+          height: MediaQuery.of(context).size.height * 0.62,
           child: PageView.builder(
             controller: _pageController,
             itemCount: planets.length,
@@ -97,9 +85,7 @@ class _PlanetScreenState extends State<PlanetScreen> {
               return GestureDetector(
                 onTap: () => Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (_) => PlanetDetailScreen(planet: planet),
-                  ),
+                  MaterialPageRoute(builder: (_) => PlanetDetailScreen(planet: planet)),
                 ),
                 child: AnimatedScale(
                   scale: isActive ? 1.0 : 0.85,
@@ -111,94 +97,65 @@ class _PlanetScreenState extends State<PlanetScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        // 행성 이미지
-                        Expanded(
-                          child: Image.asset(
-                            _assetPath(planet.imageKey),
-                            fit: BoxFit.contain,
-                            errorBuilder: (_, __, ___) => Container(
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                gradient: RadialGradient(
-                                  colors: [
-                                    const Color(0xFFF4A259).withOpacity(0.6),
-                                    const Color(0xFF2a1840).withOpacity(0.3),
-                                  ],
-                                ),
-                              ),
-                              child: const Center(
-                                child: Text('🌍',
-                                    style: TextStyle(fontSize: 80)),
-                              ),
-                            ),
-                          ),
-                        ),
+                        Expanded(flex: 3, child: _PlanetAnimation(imageKey: planet.imageKey, isActive: isActive)),
                         const SizedBox(height: 20),
-
-                        // 행성 이름
-                        Text(
-                          planet.name,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        // 행성 이름 (판넬 배경)
+                        Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Image.asset(
+                              'assets/images/ui/island/island_name_UI.png',
+                              height: 56,
+                              fit: BoxFit.fitHeight,
+                            ),
+                            Text(planet.name,
+                                style: const TextStyle(
+                                    color: Color(0xFF3E2723),
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold)),
+                          ],
                         ),
                         const SizedBox(height: 6),
-
-                        // 인터뷰 인물
                         if (planet.interviewPersonName != null)
                           Text(
                             '${planet.interviewPersonName}'
                                 '${planet.interviewPersonJob != null ? ' · ${planet.interviewPersonJob}' : ''}',
-                            style: const TextStyle(
-                                color: Colors.white54, fontSize: 13),
+                            style: const TextStyle(color: Colors.white54, fontSize: 13),
                           ),
                         const SizedBox(height: 6),
-
-                        // 탐험 구역 수
                         Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                                color: Colors.white.withOpacity(0.2)),
+                            border: Border.all(color: Colors.white.withOpacity(0.2)),
                           ),
-                          child: Text(
-                            '탐험 구역 ${planet.stages.length}개',
-                            style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500),
-                          ),
+                          child: Text('탐험 구역 ${planet.stages.length}개',
+                              style: const TextStyle(
+                                  color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500)),
                         ),
                         const SizedBox(height: 16),
-
-                        // 탐험하기 버튼 (활성 행성만)
                         if (isActive)
-                          ElevatedButton(
-                            onPressed: () => Navigator.push(
+                          GestureDetector(
+                            onTap: () => Navigator.push(
                               context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    PlanetDetailScreen(planet: planet),
-                              ),
+                              MaterialPageRoute(builder: (_) => PlanetDetailScreen(planet: planet)),
                             ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFF4A259),
-                              foregroundColor: Colors.black,
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 32, vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(24)),
-                              elevation: 0,
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                SvgPicture.asset(
+                                  'assets/images/ui/select_ui.svg',
+                                  width: 160,
+                                  height: 44,
+                                ),
+                                const Text('탐험하기',
+                                    style: TextStyle(
+                                        color: Color(0xFF3E2723),
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15)),
+                              ],
                             ),
-                            child: const Text('탐험하기',
-                                style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 15)),
                           ),
                       ],
                     ),
@@ -208,10 +165,7 @@ class _PlanetScreenState extends State<PlanetScreen> {
             },
           ),
         ),
-
         const Spacer(flex: 1),
-
-        // 페이지 인디케이터
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(planets.length, (i) {
@@ -222,15 +176,12 @@ class _PlanetScreenState extends State<PlanetScreen> {
               width: isActive ? 20 : 8,
               height: 8,
               decoration: BoxDecoration(
-                color: isActive
-                    ? const Color(0xFFF4A259)
-                    : Colors.white.withOpacity(0.3),
+                color: isActive ? const Color(0xFFF4A259) : Colors.white.withOpacity(0.3),
                 borderRadius: BorderRadius.circular(4),
               ),
             );
           }),
         ),
-
         const SizedBox(height: 32),
       ],
     );
@@ -244,14 +195,92 @@ class _PlanetScreenState extends State<PlanetScreen> {
           Text('🌍', style: TextStyle(fontSize: 64)),
           SizedBox(height: 16),
           Text('아직 행성이 없습니다.',
-              style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white)),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
           SizedBox(height: 8),
           Text('곧 새로운 행성이 추가될 예정이에요.',
               style: TextStyle(color: Colors.white54)),
         ],
+      ),
+    );
+  }
+}
+
+// ── 행성 애니메이션 ──
+class _PlanetAnimation extends StatefulWidget {
+  final String? imageKey;
+  final bool isActive;
+  const _PlanetAnimation({this.imageKey, this.isActive = false});
+
+  @override
+  State<_PlanetAnimation> createState() => _PlanetAnimationState();
+}
+
+class _PlanetAnimationState extends State<_PlanetAnimation> {
+  static const _totalFrames = 13;
+  static const _frameDuration = Duration(milliseconds: 150);
+
+  int _frame = 1;
+  bool _ascending = true;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.isActive) _startTimer();
+  }
+
+  @override
+  void didUpdateWidget(_PlanetAnimation oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isActive && !oldWidget.isActive) {
+      _startTimer();
+    } else if (!widget.isActive && oldWidget.isActive) {
+      _timer?.cancel();
+      _timer = null;
+    }
+  }
+
+  void _startTimer() {
+    _timer?.cancel();
+    _timer = Timer.periodic(_frameDuration, (_) {
+      if (!mounted) return;
+      setState(() {
+        if (_ascending) {
+          _frame++;
+          if (_frame >= _totalFrames) _ascending = false;
+        } else {
+          _frame--;
+          if (_frame <= 1) _ascending = true;
+        }
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final key = widget.imageKey ?? 'planet1';
+    final frameNum = _frame.toString().padLeft(2, '0');
+    return Image.asset(
+      'assets/images/space/$key/${key}_$frameNum.png',
+      fit: BoxFit.contain,
+      gaplessPlayback: true,
+      errorBuilder: (_, __, ___) => Container(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: RadialGradient(
+            colors: [
+              const Color(0xFFF4A259).withOpacity(0.6),
+              const Color(0xFF2a1840).withOpacity(0.3),
+            ],
+          ),
+        ),
+        child: const Center(child: Text('🌍', style: TextStyle(fontSize: 80))),
       ),
     );
   }

@@ -3,7 +3,6 @@ import '../../../data/models/routine_model.dart';
 import '../../../data/repositories/routine_repository.dart';
 import 'exercise_pick_screen.dart';
 import 'workout_log_screen.dart';
-import '../../../core/widgets/app_background.dart';
 
 class RoutineDetailScreen extends StatefulWidget {
   final RoutineModel routine;
@@ -336,11 +335,18 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
             ),
           ],
         ),
-        body: AppBackground(
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 250),
-            child: _isEditMode ? _buildEditMode() : _buildNormalMode(),
-          ),
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.asset(
+              'assets/images/ui/home_background/home_bg.png',
+              fit: BoxFit.cover,
+            ),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 250),
+              child: _isEditMode ? _buildEditMode() : _buildNormalMode(),
+            ),
+          ],
         ),
       ),
     );
@@ -564,36 +570,53 @@ class _SingleCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E1225),
+        color: const Color(0xFF0D0A1A).withOpacity(0.70),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withOpacity(0.06)),
-      ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-        leading: Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: const Color(0xFF1A3A4A),
-            borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFF8B5E3C).withOpacity(0.5), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFF4A259).withOpacity(0.08),
+            blurRadius: 12,
+            spreadRadius: 2,
           ),
-          child: const Icon(Icons.open_in_full_rounded,
-              size: 20, color: Color(0xFF42A5F5)),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            splashColor: const Color(0xFFF4A259).withOpacity(0.15),
+            highlightColor: const Color(0xFFF4A259).withOpacity(0.1),
+            child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              leading: Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1A3A4A),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.open_in_full_rounded,
+                    size: 20, color: Color(0xFF42A5F5)),
+              ),
+              title: Text(item.exercise.exerciseName,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                      color: Colors.white)),
+              subtitle: Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text(item.exercise.target,
+                    style: TextStyle(
+                        fontSize: 12, color: Colors.white.withOpacity(0.4))),
+              ),
+              trailing: Icon(Icons.chevron_right,
+                  color: const Color(0xFFF4A259).withOpacity(0.7)),
+            ),
+          ),
         ),
-        title: Text(item.exercise.exerciseName,
-            style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 15,
-                color: Colors.white)),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 2),
-          child: Text(item.exercise.target,
-              style: TextStyle(
-                  fontSize: 12, color: Colors.white.withOpacity(0.4))),
-        ),
-        trailing: Icon(Icons.chevron_right,
-            color: Colors.white.withOpacity(0.3)),
-        onTap: onTap,
       ),
     );
   }
@@ -610,66 +633,73 @@ class _SupersetCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E1225),
+        color: const Color(0xFF0D0A1A).withOpacity(0.70),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: const Color(0xFFF4A259).withOpacity(0.3)),
       ),
-      child: InkWell(
-        onTap: onTap,
+      child: ClipRRect(
         borderRadius: BorderRadius.circular(14),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 8, vertical: 4),
-                margin: const EdgeInsets.only(right: 12, top: 2),
-                decoration: BoxDecoration(
-                    color: const Color(0xFFF4A259),
-                    borderRadius: BorderRadius.circular(8)),
-                child: const Text('SS',
-                    style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5)),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            splashColor: const Color(0xFFF4A259).withOpacity(0.15),
+            highlightColor: const Color(0xFFF4A259).withOpacity(0.1),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 4),
+                    margin: const EdgeInsets.only(right: 12, top: 2),
+                    decoration: BoxDecoration(
+                        color: const Color(0xFFF4A259),
+                        borderRadius: BorderRadius.circular(8)),
+                    child: const Text('SS',
+                        style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5)),
+                  ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: item.exercises.map((ex) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Row(
+                            children: [
+                              Container(
+                                  width: 3,
+                                  height: 16,
+                                  decoration: BoxDecoration(
+                                      color: const Color(0xFFF4A259),
+                                      borderRadius: BorderRadius.circular(2))),
+                              const SizedBox(width: 8),
+                              Text(ex.exerciseName,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14,
+                                      color: Colors.white)),
+                              const SizedBox(width: 6),
+                              Text(ex.target,
+                                  style: TextStyle(
+                                      color: Colors.white.withOpacity(0.4),
+                                      fontSize: 12)),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                  Icon(Icons.chevron_right,
+                      color: Colors.white.withOpacity(0.3), size: 20),
+                ],
               ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: item.exercises.map((ex) {
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: Row(
-                        children: [
-                          Container(
-                              width: 3,
-                              height: 16,
-                              decoration: BoxDecoration(
-                                  color: const Color(0xFFF4A259),
-                                  borderRadius: BorderRadius.circular(2))),
-                          const SizedBox(width: 8),
-                          Text(ex.exerciseName,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14,
-                                  color: Colors.white)),
-                          const SizedBox(width: 6),
-                          Text(ex.target,
-                              style: TextStyle(
-                                  color: Colors.white.withOpacity(0.4),
-                                  fontSize: 12)),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-              Icon(Icons.chevron_right,
-                  color: Colors.white.withOpacity(0.3), size: 20),
-            ],
+            ),
           ),
         ),
       ),
@@ -774,7 +804,7 @@ class _EditSupersetCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E1225),
+        color: const Color(0xFF0D0A1A).withOpacity(0.70),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: const Color(0xFFF4A259).withOpacity(0.3)),
       ),

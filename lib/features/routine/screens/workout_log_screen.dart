@@ -5,7 +5,6 @@ import '../../../data/models/routine_model.dart';
 import '../../../data/models/workout_model.dart';
 import '../../../data/repositories/routine_repository.dart';
 import '../../currency/provider/currency_provider.dart';
-import '../../../core/widgets/app_background.dart';
 
 class WorkoutLogScreen extends StatefulWidget {
   final List<RoutineExerciseModel> exercises;
@@ -253,7 +252,7 @@ class _WorkoutLogScreenState extends State<WorkoutLogScreen>
     final currency = context.watch<CurrencyProvider>();
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: const Color(0xFF160d1f),
         elevation: 0,
@@ -311,65 +310,63 @@ class _WorkoutLogScreenState extends State<WorkoutLogScreen>
         )
             : null,
       ),
-      body: AppBackground(
-        child: Stack(
-          children: [
-            !_isLoaded
-                ? const Center(
-                child: CircularProgressIndicator(color: Colors.white))
-                : widget.isSuperset
-                ? TabBarView(
-              controller: _tabController,
-              children: List.generate(
-                  widget.exercises.length,
-                      (i) => _buildEditor(i)),
-            )
-                : _buildEditor(0),
+      body: Stack(
+        children: [
+          !_isLoaded
+              ? const Center(
+              child: CircularProgressIndicator(color: Colors.white))
+              : widget.isSuperset
+              ? TabBarView(
+            controller: _tabController,
+            children: List.generate(
+                widget.exercises.length,
+                    (i) => _buildEditor(i)),
+          )
+              : _buildEditor(0),
 
-            // 코인 획득 애니메이션
-            if (_lastGranted > 0)
-              Positioned(
-                top: 60,
-                right: 20,
-                child: AnimatedBuilder(
-                  animation: _coinAnim,
-                  builder: (_, __) => FadeTransition(
-                    opacity: _coinFade,
-                    child: SlideTransition(
-                      position: _coinSlide,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF4A259),
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFFF4A259).withOpacity(0.4),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            )
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Text('👟', style: TextStyle(fontSize: 16)),
-                            const SizedBox(width: 4),
-                            Text('+$_lastGranted',
-                                style: const TextStyle(
-                                    color: Colors.black,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16)),
-                          ],
-                        ),
+          // 코인 획득 애니메이션
+          if (_lastGranted > 0)
+            Positioned(
+              top: 60,
+              right: 20,
+              child: AnimatedBuilder(
+                animation: _coinAnim,
+                builder: (_, __) => FadeTransition(
+                  opacity: _coinFade,
+                  child: SlideTransition(
+                    position: _coinSlide,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF4A259),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFFF4A259).withOpacity(0.4),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          )
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text('👟', style: TextStyle(fontSize: 16)),
+                          const SizedBox(width: 4),
+                          Text('+$_lastGranted',
+                              style: const TextStyle(
+                                  color: Colors.black,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16)),
+                        ],
                       ),
                     ),
                   ),
                 ),
               ),
-          ],
-        ),
+            ),
+        ],
       ),
       bottomNavigationBar: Container(
         color: const Color(0xFF160d1f),
@@ -410,7 +407,7 @@ class _WorkoutLogScreenState extends State<WorkoutLogScreen>
     final recent = _allRecentSets[index];
 
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
       children: [
         Padding(
           padding: const EdgeInsets.only(bottom: 8),
@@ -438,13 +435,19 @@ class _WorkoutLogScreenState extends State<WorkoutLogScreen>
           onAddDropset: () => _addDropset(index, e.key),
           onRemoveDropset: (di) => _removeDropset(index, e.key, di),
         )),
-        OutlinedButton(
-          onPressed: () => _addSet(index),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: const Color(0xFFF4A259),
-            side: const BorderSide(color: Color(0xFFF4A259)),
+        const SizedBox(height: 8),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton(
+            onPressed: () => _addSet(index),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFFF4A259),
+              side: const BorderSide(color: Color(0xFFF4A259), width: 1.5),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text('+ 세트 추가', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
           ),
-          child: const Text('+ 세트 추가'),
         ),
 
         // 최근 기록
@@ -558,7 +561,7 @@ class _SetGroupWidget extends StatelessWidget {
       children: [
         _row('${group.setNumber}', group.main, false, onRemoveSet),
         ...group.dropsets.asMap().entries.map((e) => Padding(
-          padding: const EdgeInsets.only(left: 16),
+          padding: const EdgeInsets.only(left: 16, top: 4),
           child: _row('DROP', e.value, true, () => onRemoveDropset(e.key)),
         )),
         Align(
@@ -577,40 +580,43 @@ class _SetGroupWidget extends StatelessWidget {
   }
 
   Widget _row(String label, _SetInput input, bool isDrop, VoidCallback onRemove) {
-    return Row(
-      children: [
-        SizedBox(
-          width: 56,
-          child: isDrop
-              ? Container(
-            padding: const EdgeInsets.symmetric(
-                horizontal: 6, vertical: 3),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF4A259).withOpacity(0.2),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: const Text('DROP',
-                style: TextStyle(
-                    fontSize: 11,
-                    color: Color(0xFFF4A259),
-                    fontWeight: FontWeight.bold)),
-          )
-              : Text(label,
-              style: const TextStyle(
-                  fontWeight: FontWeight.bold, color: Colors.white)),
-        ),
-        Expanded(child: _Num(controller: input.weightController, hint: '20')),
-        const SizedBox(width: 8),
-        Expanded(child: _Num(controller: input.repsController, hint: '10')),
-        IconButton(
-          icon: Icon(Icons.cancel_outlined,
-              color: isDrop
-                  ? Colors.red.withOpacity(0.5)
-                  : Colors.white.withOpacity(0.2),
-              size: 20),
-          onPressed: onRemove,
-        ),
-      ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 56,
+            child: isDrop
+                ? Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 6, vertical: 3),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF4A259).withOpacity(0.2),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Text('DROP',
+                  style: TextStyle(
+                      fontSize: 11,
+                      color: Color(0xFFF4A259),
+                      fontWeight: FontWeight.bold)),
+            )
+                : Text(label,
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold, color: Colors.white)),
+          ),
+          Expanded(child: _Num(controller: input.weightController, hint: '20')),
+          const SizedBox(width: 8),
+          Expanded(child: _Num(controller: input.repsController, hint: '10')),
+          IconButton(
+            icon: Icon(Icons.cancel_outlined,
+                color: isDrop
+                    ? Colors.red.withOpacity(0.5)
+                    : Colors.white.withOpacity(0.2),
+                size: 20),
+            onPressed: onRemove,
+          ),
+        ],
+      ),
     );
   }
 }
@@ -624,8 +630,9 @@ class _Num extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.07),
-        borderRadius: BorderRadius.circular(8),
+        color: const Color(0xFF0D0A1A).withOpacity(0.8),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF8B5E3C).withOpacity(0.4)),
       ),
       child: TextField(
         controller: controller,
@@ -633,14 +640,15 @@ class _Num extends StatelessWidget {
         inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[\d.]'))],
         textAlign: TextAlign.center,
         textInputAction: TextInputAction.next,
-        style: const TextStyle(color: Colors.white),
+        style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
         onTap: () => controller.selection = TextSelection(
             baseOffset: 0, extentOffset: controller.text.length),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: TextStyle(color: Colors.white.withOpacity(0.2)),
+          hintStyle: TextStyle(color: Colors.white.withOpacity(0.2), fontSize: 18),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(vertical: 10),
+          contentPadding: const EdgeInsets.symmetric(vertical: 14),
+          focusedBorder: InputBorder.none,
         ),
       ),
     );
