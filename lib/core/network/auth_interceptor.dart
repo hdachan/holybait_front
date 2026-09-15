@@ -1,11 +1,17 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
 import '../constants/api_constants.dart';
 import '../error/app_exception.dart';
 import '../storage/secure_storage.dart';
 
+// main.dart에서 선언한 전역 키
+// final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+import '../../../main.dart' show navigatorKey;
+
 class AuthInterceptor extends Interceptor {
   final Dio dio;
   bool _isRefreshing = false;
+  bool _isShowingDialog = false;
 
   AuthInterceptor(this.dio);
 
@@ -44,9 +50,16 @@ class AuthInterceptor extends Interceptor {
       case AuthErrorCode.accessTokenExpired:
         await _handleRefresh(err, handler);
 
-      case AuthErrorCode.accessTokenInvalid:
       case AuthErrorCode.refreshTokenExpired:
       case AuthErrorCode.refreshTokenReused:
+        await SecureStorage.clearAll();
+        _showSessionExpiredDialog('세션이 만료됐습니다.\n다시 로그인해주세요.');
+        handler.reject(DioException(
+          requestOptions: err.requestOptions,
+          error: AppException('세션이 만료됐습니다.', errorCode: errorCode),
+        ));
+
+      case AuthErrorCode.accessTokenInvalid:
       case AuthErrorCode.userBanned:
       case AuthErrorCode.userDeleted:
         await SecureStorage.clearAll();
@@ -58,6 +71,54 @@ class AuthInterceptor extends Interceptor {
       default:
         handler.next(err);
     }
+  }
+
+  void _showSessionExpiredDialog(String message) {
+    final context = navigatorKey.currentContext;
+    if (context == null || _isShowingDialog) return;
+    _isShowingDialog = true;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF1C0E04),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.lock_outline, color: Color(0xFFEF7910), size: 22),
+            SizedBox(width: 8),
+            Text('세션 만료',
+                style: TextStyle(color: Colors.white, fontSize: 17,
+                    fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Text(message,
+            style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 14)),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                _isShowingDialog = false;
+                Navigator.of(context, rootNavigator: true).pop();
+                navigatorKey.currentState?.pushNamedAndRemoveUntil(
+                    '/login', (_) => false);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFEF7910),
+                foregroundColor: Colors.black,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                elevation: 0,
+              ),
+              child: const Text('다시 로그인',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ),
+        ],
+      ),
+    ).then((_) => _isShowingDialog = false);
   }
 
   Future<void> _handleRefresh(
@@ -95,6 +156,7 @@ class AuthInterceptor extends Interceptor {
       handler.resolve(retryResponse);
     } catch (_) {
       await SecureStorage.clearAll();
+      _showSessionExpiredDialog('세션이 만료됐습니다.\n다시 로그인해주세요.');
       handler.next(err);
     } finally {
       _isRefreshing = false;

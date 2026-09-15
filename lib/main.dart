@@ -9,6 +9,9 @@ import 'features/step/step_provider.dart';
 import 'features/planet/provider/planet_provider.dart';
 import 'router.dart';
 
+// 전역 navigatorKey (auth_interceptor에서 팝업 띄울 때 사용)
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 void main() {
   runApp(const HolyHabitApp());
 }
