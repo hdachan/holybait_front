@@ -15,120 +15,112 @@ class ShopScreen extends StatelessWidget {
     final currency = context.watch<CurrencyProvider>();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF2F1FA),
+      backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
         title: const Text('상점',
             style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 18,
-                color: Colors.black)),
+                color: Colors.white)),
         centerTitle: true,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            // 보유 골드
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  )
-                ],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text('🪙', style: TextStyle(fontSize: 20)),
-                  const SizedBox(width: 8),
-                  Text('보유 골드',
-                      style: TextStyle(
-                          fontSize: 14, color: Colors.grey.shade600)),
-                  const SizedBox(width: 8),
-                  Text('${currency.gold}',
-                      style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFFFFB300))),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // 캐릭터 뽑기 카드
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF2C1654), Color(0xFF1A2A4A)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.deepPurple.withOpacity(0.3),
-                    blurRadius: 16,
-                    offset: const Offset(0, 4),
-                  )
-                ],
-              ),
+      extendBodyBehindAppBar: true,
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.asset(
+            'assets/images/shop/shop_bg.png',
+            fit: BoxFit.cover,
+          ),
+          Container(color: Colors.black.withOpacity(0.35)),
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
               child: Column(
                 children: [
-                  const Text('🎁', style: TextStyle(fontSize: 48)),
-                  const SizedBox(height: 12),
-                  const Text('캐릭터 뽑기',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  const Text('랜덤으로 캐릭터 1마리를 획득해요',
-                      style: TextStyle(
-                          color: Colors.white70, fontSize: 13)),
-                  const SizedBox(height: 4),
-                  const Text('중복 획득 가능',
-                      style: TextStyle(
-                          color: Colors.white54, fontSize: 11)),
-                  const SizedBox(height: 20),
-                  ElevatedButton(
-                    onPressed: () => _onGacha(context, currency),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.amber,
-                      foregroundColor: Colors.black,
-                      minimumSize: const Size(double.infinity, 50),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14)),
-                      elevation: 0,
+                  // 보유 골드
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0D0A1A).withOpacity(0.70),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFF8B5E3C).withOpacity(0.5)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFF4A259).withOpacity(0.08),
+                          blurRadius: 12,
+                          spreadRadius: 2,
+                        ),
+                      ],
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Text('🪙 ',
-                            style: TextStyle(fontSize: 16)),
-                        Text('$gachaCost 골드로 뽑기',
+                        const Text('🪙', style: TextStyle(fontSize: 20)),
+                        const SizedBox(width: 8),
+                        Text('보유 골드',
+                            style: TextStyle(
+                                fontSize: 14, color: Colors.white.withOpacity(0.6))),
+                        const SizedBox(width: 8),
+                        Text('${currency.gold}',
                             style: const TextStyle(
+                                fontSize: 20,
                                 fontWeight: FontWeight.bold,
-                                fontSize: 16)),
+                                color: Color(0xFFFFB300))),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // 캐릭터 뽑기 카드 (이미지 + 버튼 겹침)
+                  AspectRatio(
+                    aspectRatio: 608 / 553,
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: Image.asset(
+                            'assets/images/shop/shop_popup.png',
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                        Positioned(
+                          left: 24,
+                          right: 24,
+                          bottom: 24,
+                          child: ElevatedButton(
+                            onPressed: () => _onGacha(context, currency),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFEF7910),
+                              foregroundColor: Colors.black,
+                              minimumSize: const Size(double.infinity, 52),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14)),
+                              elevation: 0,
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Text('🪙 ', style: TextStyle(fontSize: 16)),
+                                Text('$gachaCost 골드로 뽑기',
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold, fontSize: 16)),
+                              ],
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
                 ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -142,10 +134,16 @@ class ShopScreen extends StatelessWidget {
       showDialog(
         context: context,
         builder: (_) => AlertDialog(
-          title: const Text('골드 부족'),
-          content: const Text('골드가 부족합니다.\n모험을 통해 골드를 모아보세요!'),
+          backgroundColor: const Color(0xFF1C0E04),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text('골드 부족', style: TextStyle(color: Colors.white)),
+          content: const Text('골드가 부족합니다.\n모험을 통해 골드를 모아보세요!',
+              style: TextStyle(color: Colors.white70)),
           actions: [
             FilledButton(
+              style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFFEF7910),
+                  foregroundColor: Colors.black),
               onPressed: () => Navigator.pop(context),
               child: const Text('확인'),
             ),
@@ -160,10 +158,16 @@ class ShopScreen extends StatelessWidget {
       showDialog(
         context: context,
         builder: (_) => AlertDialog(
-          title: const Text('슬롯 부족'),
-          content: const Text('슬롯이 꽉 찼습니다.\n캐릭터 화면에서 슬롯을 확장해주세요!'),
+          backgroundColor: const Color(0xFF1C0E04),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text('슬롯 부족', style: TextStyle(color: Colors.white)),
+          content: const Text('슬롯이 꽉 찼습니다.\n캐릭터 화면에서 슬롯을 확장해주세요!',
+              style: TextStyle(color: Colors.white70)),
           actions: [
             FilledButton(
+              style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFFEF7910),
+                  foregroundColor: Colors.black),
               onPressed: () => Navigator.pop(context),
               child: const Text('확인'),
             ),
@@ -194,14 +198,10 @@ class ShopScreen extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.all(28),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF2C1654), Color(0xFF1A2A4A)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+              color: const Color(0xFF1C0E04),
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
-                  color: Colors.amber.withOpacity(0.6), width: 2),
+                  color: const Color(0xFFEF7910).withOpacity(0.5), width: 1.5),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -210,7 +210,7 @@ class ShopScreen extends StatelessWidget {
                 const SizedBox(height: 12),
                 const Text('캐릭터 획득!',
                     style: TextStyle(
-                        color: Colors.amber,
+                        color: Color(0xFFEF7910),
                         fontSize: 24,
                         fontWeight: FontWeight.bold)),
                 const SizedBox(height: 16),
@@ -218,7 +218,7 @@ class ShopScreen extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(
                       horizontal: 20, vertical: 12),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.08),
+                    color: Colors.white.withOpacity(0.06),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -239,7 +239,7 @@ class ShopScreen extends StatelessWidget {
                 ElevatedButton(
                   onPressed: () => Navigator.pop(context),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.amber,
+                    backgroundColor: const Color(0xFFEF7910),
                     foregroundColor: Colors.black,
                     minimumSize: const Size(double.infinity, 46),
                     shape: RoundedRectangleBorder(

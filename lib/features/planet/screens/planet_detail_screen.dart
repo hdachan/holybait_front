@@ -1,10 +1,10 @@
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../data/models/planet_model.dart';
 import '../../adventure/provider/adventure_provider.dart';
 import '../../adventure/screens/battle_screen.dart';
 import '../../currency/provider/currency_provider.dart';
-import '../../../core/widgets/app_background.dart';
 
 class PlanetDetailScreen extends StatefulWidget {
   final PlanetModel planet;
@@ -15,6 +15,15 @@ class PlanetDetailScreen extends StatefulWidget {
 }
 
 class _PlanetDetailScreenState extends State<PlanetDetailScreen> {
+  final PageController _pageController = PageController();
+  int _currentPage = 0;
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -30,7 +39,6 @@ class _PlanetDetailScreenState extends State<PlanetDetailScreen> {
     final characterLevel = provider.activeCharacter?.level ?? 1;
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
       appBar: AppBar(
         backgroundColor: const Color(0xFF160d1f),
         elevation: 0,
@@ -42,102 +50,61 @@ class _PlanetDetailScreenState extends State<PlanetDetailScreen> {
                 color: Colors.white)),
         centerTitle: true,
       ),
-      body: AppBackground(
-        child: Column(
-          children: [
-            // 행성 헤더
-            Container(
-              margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.06),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withOpacity(0.08)),
-              ),
-              child: Row(
-                children: [
-                  const Text('🌍', style: TextStyle(fontSize: 40)),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (widget.planet.interviewPersonName != null)
-                          Text(
-                            '${widget.planet.interviewPersonName}'
-                                '${widget.planet.interviewPersonJob != null ? ' · ${widget.planet.interviewPersonJob}' : ''}',
-                            style: const TextStyle(
-                                color: Colors.white54, fontSize: 12),
-                          ),
-                        if (widget.planet.description != null)
-                          Text(
-                            widget.planet.description!,
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500),
-                          ),
-                      ],
-                    ),
+      backgroundColor: Colors.black,
+      extendBodyBehindAppBar: true,
+      body: provider.isLoading
+          ? const Center(
+          child: CircularProgressIndicator(color: Color(0xFFF4A259)))
+          : widget.planet.stages.isEmpty
+          ? const Center(
+          child: Text('탐험 구역이 없습니다.',
+              style: TextStyle(color: Colors.white54)))
+          : Stack(
+        children: [
+          PageView.builder(
+            controller: _pageController,
+            physics: const PageScrollPhysics(),
+            itemCount: widget.planet.stages.length,
+            onPageChanged: (i) =>
+                setState(() => _currentPage = i),
+            itemBuilder: (_, i) {
+              final stage = widget.planet.stages[i];
+              final isLocked = characterLevel < stage.minLevel;
+              final canAfford =
+                  currency.shoeCoin >= stage.shoeCoinCost;
+              return _StagePage(
+                stage: stage,
+                isLocked: isLocked,
+                canAfford: canAfford,
+                onTap: () => _onStageTap(
+                    stage, isLocked, canAfford, currency),
+              );
+            },
+          ),
+          Positioned(
+            bottom: 40,
+            left: 0,
+            right: 0,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(widget.planet.stages.length, (i) {
+                final isActive = i == _currentPage;
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  width: isActive ? 20 : 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: isActive
+                        ? const Color(0xFFF4A259)
+                        : Colors.white.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(4),
                   ),
-                ],
-              ),
+                );
+              }),
             ),
-
-            const SizedBox(height: 16),
-
-            // 탐험 구역 헤더
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: [
-                  const Text('탐험 구역',
-                      style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white)),
-                  const SizedBox(width: 8),
-                  Text('신발코인으로 입장',
-                      style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.white.withOpacity(0.4))),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-
-            // 탐험 구역 목록
-            Expanded(
-              child: provider.isLoading
-                  ? const Center(
-                  child: CircularProgressIndicator(color: Colors.white))
-                  : widget.planet.stages.isEmpty
-                  ? Center(
-                  child: Text('탐험 구역이 없습니다.',
-                      style: TextStyle(
-                          color: Colors.white.withOpacity(0.4))))
-                  : ListView.builder(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 4),
-                itemCount: widget.planet.stages.length,
-                itemBuilder: (_, i) {
-                  final stage = widget.planet.stages[i];
-                  final isLocked = characterLevel < stage.minLevel;
-                  final canAfford =
-                      currency.shoeCoin >= stage.shoeCoinCost;
-
-                  return _StageCard(
-                    stage: stage,
-                    isLocked: isLocked,
-                    canAfford: canAfford,
-                    onTap: () => _onStageTap(
-                        stage, isLocked, canAfford, currency),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -241,13 +208,14 @@ class _PlanetDetailScreenState extends State<PlanetDetailScreen> {
   }
 }
 
-class _StageCard extends StatelessWidget {
+// ── 구역 페이지 ──
+class _StagePage extends StatelessWidget {
   final PlanetStageModel stage;
   final bool isLocked;
   final bool canAfford;
   final VoidCallback onTap;
 
-  const _StageCard({
+  const _StagePage({
     required this.stage,
     required this.isLocked,
     required this.canAfford,
@@ -256,99 +224,172 @@ class _StageCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E1225),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isLocked
-              ? Colors.white.withOpacity(0.06)
-              : const Color(0xFFF4A259).withOpacity(0.25),
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // 배경 이미지
+        Image.asset(
+          'assets/images/adventure/${stage.imageKey}.png',
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => Container(
+            color: const Color(0xFF0D0A1A),
+            child: const Center(
+              child: Icon(Icons.explore_rounded,
+                  color: Colors.white24, size: 80),
+            ),
+          ),
         ),
-      ),
-      child: InkWell(
-        onTap: isLocked ? null : onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
+
+        // 딤드 그라디언트
+        Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Colors.black.withOpacity(0.2),
+                Colors.black.withOpacity(0.75),
+              ],
+            ),
+          ),
+        ),
+
+        // 잠금 오버레이
+        if (isLocked) Container(color: Colors.black.withOpacity(0.5)),
+
+        // 하단 콘텐츠
+        Positioned(
+          left: 24,
+          right: 24,
+          bottom: 80,
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Container(
-                width: 54,
-                height: 54,
-                decoration: BoxDecoration(
-                  color: isLocked
-                      ? Colors.white.withOpacity(0.04)
-                      : const Color(0xFFF4A259).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: isLocked
-                    ? Icon(Icons.lock,
-                    color: Colors.white.withOpacity(0.2), size: 26)
-                    : const Icon(Icons.explore_rounded,
-                    color: Color(0xFFF4A259), size: 28),
-              ),
-              const SizedBox(width: 14),
+              // 왼쪽: 설명
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text('구역 ${stage.sortOrder}',
-                        style: TextStyle(
-                            fontSize: 11,
-                            color: isLocked
-                                ? Colors.white.withOpacity(0.2)
-                                : const Color(0xFFF4A259),
-                            fontWeight: FontWeight.w600)),
-                    Text(stage.name,
-                        style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: isLocked
-                                ? Colors.white.withOpacity(0.3)
-                                : Colors.white)),
-                    const SizedBox(height: 2),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEF7910).withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                            color: const Color(0xFFEF7910).withOpacity(0.5)),
+                      ),
+                      child: Text('구역 ${stage.sortOrder}',
+                          style: const TextStyle(
+                              color: Color(0xFFEF7910),
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold)),
+                    ),
+                    const SizedBox(height: 8),
                     Text(
-                      isLocked
-                          ? 'Lv.${stage.minLevel} 이상 필요'
-                          : stage.description,
-                      style: TextStyle(
-                          fontSize: 12,
-                          color: isLocked
-                              ? Colors.redAccent.withOpacity(0.7)
-                              : Colors.white.withOpacity(0.4)),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      isLocked ? '????' : stage.name,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 6),
-                    Row(children: [
-                      Text('👟 ',
-                          style: TextStyle(
-                              fontSize: 13,
-                              color: canAfford ? null : Colors.red)),
-                      Text('${stage.shoeCoinCost}',
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: canAfford
-                                  ? const Color(0xFFF4A259)
-                                  : Colors.red,
-                              fontSize: 13)),
-                      Text(
-                          '  Lv.${stage.minLevel}~${stage.maxLevel}',
-                          style: TextStyle(
-                              color: Colors.white.withOpacity(0.3),
-                              fontSize: 12)),
-                    ]),
+                    Text(
+                      isLocked
+                          ? 'Lv.${stage.minLevel} 이상부터 입장 가능'
+                          : stage.description,
+                      style: TextStyle(
+                          color: isLocked
+                              ? Colors.redAccent.withOpacity(0.8)
+                              : Colors.white.withOpacity(0.7),
+                          fontSize: 13,
+                          height: 1.4),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.4),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                              'Lv.${stage.minLevel}~${stage.maxLevel}',
+                              style: TextStyle(
+                                  color: Colors.white.withOpacity(0.6),
+                                  fontSize: 12)),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.4),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              const Text('👟',
+                                  style: TextStyle(fontSize: 12)),
+                              const SizedBox(width: 4),
+                              Text('${stage.shoeCoinCost}',
+                                  style: TextStyle(
+                                      color: canAfford
+                                          ? const Color(0xFFF4A259)
+                                          : Colors.red,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right,
-                  color: Colors.white.withOpacity(0.3)),
+
+              const SizedBox(width: 16),
+
+              // 오른쪽: 버튼
+              if (!isLocked)
+                GestureDetector(
+                  onTap: onTap,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      SvgPicture.asset(
+                        'assets/images/ui/select_ui.svg',
+                        width: 110,
+                        height: 42,
+                      ),
+                      const Text('탐험하기',
+                          style: TextStyle(
+                              color: Color(0xFF3E2723),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14)),
+                    ],
+                  ),
+                )
+              else
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.4),
+                    borderRadius: BorderRadius.circular(12),
+                    border:
+                    Border.all(color: Colors.white.withOpacity(0.1)),
+                  ),
+                  child: const Icon(Icons.lock,
+                      color: Colors.white38, size: 24),
+                ),
             ],
           ),
         ),
-      ),
+      ],
     );
   }
 }

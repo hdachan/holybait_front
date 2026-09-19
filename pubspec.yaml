@@ -28,7 +28,7 @@ dependencies:
   url_launcher: ^6.2.5
   package_info_plus: ^8.0.0
 
-  #만보개
+  #만보기
   pedometer: ^4.1.1
   shared_preferences: ^2.2.2
 
@@ -43,6 +43,7 @@ dev_dependencies:
 flutter:
   assets:
     - assets/images/space/space_bg.png
+    - assets/images/adventure/
     - assets/images/characters/knight/
     - assets/images/characters/holy/
     - assets/images/monsters/monster1/
@@ -58,5 +59,31 @@ flutter:
     - assets/images/onboarding/
     - assets/images/onboarding/icon/
     - assets/images/ui/icon/
+    - assets/images/shop/
 
   uses-material-design: true
+
+  fonts:
+    - family: Paperlogy
+      fonts:
+        - asset: assets/fonts/Paperlogy-1Thin.ttf
+          weight: 100
+        - asset: assets/fonts/Paperlogy-2ExtraLight.ttf
+          weight: 200
+        - asset: assets/fonts/Paperlogy-3Light.ttf
+          weight: 300
+        - asset: assets/fonts/Paperlogy-4Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Paperlogy-5Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Paperlogy-6SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Paperlogy-7Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Paperlogy-8ExtraBold.ttf
+          weight: 800
+        - asset: assets/fonts/Paperlogy-9Black.ttf
+          weight: 900
+    - family: Waguri
+      fonts:
+        - asset: assets/fonts/WAGURI TTF.ttf

@@ -8,6 +8,8 @@ import '../../../data/models/adventure_model.dart';
 import '../../../core/network/api_client.dart';
 import '../../shop/screens/shop_screen.dart';
 import '../../../core/widgets/currency_badge.dart';
+import '../../quest/screens/quest_sheet.dart';
+import '../../quest/provider/quest_provider.dart';
 
 class CharacterScreen extends StatefulWidget {
   const CharacterScreen({super.key});
@@ -24,6 +26,7 @@ class _CharacterScreenState extends State<CharacterScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       context.read<CurrencyProvider>().load();
+      context.read<QuestProvider>().refreshAllBadges();
       await context.read<AdventureProvider>().loadStages();
       final characters = context.read<AdventureProvider>().myCharacters;
       final activeIndex = characters.indexWhere((c) => c.isActive);
@@ -207,6 +210,66 @@ class _CharacterScreenState extends State<CharacterScreen> {
                                   _CharacterPlaceholder(
                                       color: color, size: spriteSize),
                             ),
+                          ),
+                        ),
+
+                        // ── 퀘스트 버튼 (우측) ──
+                        Positioned(
+                          right: 12,
+                          top: height * 0.42,
+                          child: Consumer<QuestProvider>(
+                            builder: (context, questProvider, _) {
+                              final hasClaimable = questProvider.hasClaimable;
+                              return GestureDetector(
+                                onTap: () => showQuestSheet(context),
+                                child: Stack(
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    Container(
+                                      width: 48,
+                                      height: 48,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF1C0E04).withOpacity(0.85),
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                            color: const Color(0xFFEF7910).withOpacity(0.6)),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: const Color(0xFFEF7910).withOpacity(0.2),
+                                            blurRadius: 8,
+                                          ),
+                                        ],
+                                      ),
+                                      child: const Center(
+                                        child: Text('📜', style: TextStyle(fontSize: 22)),
+                                      ),
+                                    ),
+                                    if (hasClaimable)
+                                      Positioned(
+                                        top: -4,
+                                        right: -4,
+                                        child: Container(
+                                          width: 20,
+                                          height: 20,
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFE53935),
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                                color: const Color(0xFF1C0E04), width: 2),
+                                          ),
+                                          child: const Center(
+                                            child: Text('!',
+                                                style: TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.bold)),
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              );
+                            },
                           ),
                         ),
                       ],

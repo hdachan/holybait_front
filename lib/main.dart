@@ -7,6 +7,7 @@ import 'features/routine/provider/routine_provider.dart';
 import 'features/currency/provider/currency_provider.dart';
 import 'features/step/step_provider.dart';
 import 'features/planet/provider/planet_provider.dart';
+import 'features/quest/provider/quest_provider.dart';
 import 'router.dart';
 
 // 전역 navigatorKey (auth_interceptor에서 팝업 띄울 때 사용)
@@ -30,11 +31,13 @@ class HolyHabitApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AdventureProvider()),
         ChangeNotifierProvider(create: (_) => StepProvider()),
         ChangeNotifierProvider(create: (_) => PlanetProvider()),
+        ChangeNotifierProvider(create: (_) => QuestProvider()),
       ],
       child: MaterialApp.router(
         title: 'HolyHabit',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
+          fontFamily: 'Paperlogy',
           colorScheme: ColorScheme.fromSeed(
             seedColor: const Color(0xFF1E3A5F),
           ),
