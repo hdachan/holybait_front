@@ -9,8 +9,10 @@ import 'features/main/main_screen.dart';
 import 'features/routine/screens/routine_detail_screen.dart';
 import 'features/routine/screens/exercise_pick_screen.dart';
 import 'data/models/routine_model.dart';
+import 'main.dart' show navigatorKey;
 
 final GoRouter router = GoRouter(
+  navigatorKey: navigatorKey,
   initialLocation: '/',
   routes: [
     GoRoute(path: '/',            builder: (_, __) => const SplashScreen()),
