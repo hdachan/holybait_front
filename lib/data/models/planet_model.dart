@@ -6,6 +6,7 @@ class PlanetStageModel {
   final int minLevel;
   final int maxLevel;
   final int shoeCoinCost;
+  final int requiredSteps;
   final String? imageKey;
   final int sortOrder;
 
@@ -16,6 +17,7 @@ class PlanetStageModel {
     required this.minLevel,
     required this.maxLevel,
     required this.shoeCoinCost,
+    this.requiredSteps = 0,
     this.imageKey,
     required this.sortOrder,
   });
@@ -28,6 +30,7 @@ class PlanetStageModel {
         minLevel: json['minLevel'],
         maxLevel: json['maxLevel'],
         shoeCoinCost: json['shoeCoinCost'],
+        requiredSteps: json['requiredSteps'] ?? 0,
         imageKey: json['imageKey'],
         sortOrder: json['sortOrder'] ?? 1,
       );

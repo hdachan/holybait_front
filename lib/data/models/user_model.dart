@@ -7,6 +7,7 @@ class UserModel {
   final String createdAt;
   final bool marketingAgreed;
   final bool consentCompleted;
+  final int totalSteps;
 
   UserModel({
     required this.uuid,
@@ -17,6 +18,7 @@ class UserModel {
     required this.createdAt,
     required this.marketingAgreed,
     required this.consentCompleted,
+    this.totalSteps = 0,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) => UserModel(
@@ -28,5 +30,6 @@ class UserModel {
     createdAt:         json['createdAt']?.toString() ?? '',
     marketingAgreed:   json['marketingAgreed'] ?? false,
     consentCompleted:  json['consentCompleted'] ?? false,
+    totalSteps:        json['totalSteps'] ?? 0,
   );
 }

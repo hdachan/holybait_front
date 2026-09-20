@@ -5,6 +5,7 @@ import '../../../data/models/planet_model.dart';
 import '../../adventure/provider/adventure_provider.dart';
 import '../../adventure/screens/battle_screen.dart';
 import '../../currency/provider/currency_provider.dart';
+import '../../auth/provider/auth_provider.dart';
 
 class PlanetDetailScreen extends StatefulWidget {
   final PlanetModel planet;
@@ -36,7 +37,9 @@ class _PlanetDetailScreenState extends State<PlanetDetailScreen> {
   Widget build(BuildContext context) {
     final provider = context.watch<AdventureProvider>();
     final currency = context.watch<CurrencyProvider>();
+    final auth = context.watch<AuthProvider>();
     final characterLevel = provider.activeCharacter?.level ?? 1;
+    final totalSteps = auth.user?.totalSteps ?? 0;
 
     return Scaffold(
       appBar: AppBar(
@@ -69,15 +72,20 @@ class _PlanetDetailScreenState extends State<PlanetDetailScreen> {
                 setState(() => _currentPage = i),
             itemBuilder: (_, i) {
               final stage = widget.planet.stages[i];
-              final isLocked = characterLevel < stage.minLevel;
+              final isLevelLocked = characterLevel < stage.minLevel;
+              final isStepsLocked = totalSteps < stage.requiredSteps;
+              final isLocked = isLevelLocked || isStepsLocked;
               final canAfford =
                   currency.shoeCoin >= stage.shoeCoinCost;
               return _StagePage(
                 stage: stage,
                 isLocked: isLocked,
+                isLevelLocked: isLevelLocked,
+                isStepsLocked: isStepsLocked,
+                currentSteps: totalSteps,
                 canAfford: canAfford,
                 onTap: () => _onStageTap(
-                    stage, isLocked, canAfford, currency),
+                    stage, isLocked, isLevelLocked, isStepsLocked, canAfford, currency),
               );
             },
           ),
@@ -109,11 +117,21 @@ class _PlanetDetailScreenState extends State<PlanetDetailScreen> {
     );
   }
 
-  void _onStageTap(PlanetStageModel stage, bool isLocked, bool canAfford,
-      CurrencyProvider currency) async {
-    if (isLocked) {
+  void _onStageTap(PlanetStageModel stage, bool isLocked, bool isLevelLocked,
+      bool isStepsLocked, bool canAfford, CurrencyProvider currency) async {
+    if (isLevelLocked) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('Lv.${stage.minLevel} 이상부터 입장 가능합니다.'),
+        behavior: SnackBarBehavior.floating,
+        shape:
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      ));
+      return;
+    }
+    if (isStepsLocked) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('누적 걸음수 ${stage.requiredSteps}보 이상부터 입장 가능합니다.'),
         behavior: SnackBarBehavior.floating,
         shape:
         RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -212,15 +230,27 @@ class _PlanetDetailScreenState extends State<PlanetDetailScreen> {
 class _StagePage extends StatelessWidget {
   final PlanetStageModel stage;
   final bool isLocked;
+  final bool isLevelLocked;
+  final bool isStepsLocked;
+  final int currentSteps;
   final bool canAfford;
   final VoidCallback onTap;
 
   const _StagePage({
     required this.stage,
     required this.isLocked,
+    required this.isLevelLocked,
+    required this.isStepsLocked,
+    required this.currentSteps,
     required this.canAfford,
     required this.onTap,
   });
+
+  String _lockedReason() {
+    if (isLevelLocked) return 'Lv.${stage.minLevel} 이상부터 입장 가능';
+    if (isStepsLocked) return '🚶 누적 ${stage.requiredSteps}보 이상부터 입장 가능';
+    return '';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -296,9 +326,7 @@ class _StagePage extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      isLocked
-                          ? 'Lv.${stage.minLevel} 이상부터 입장 가능'
-                          : stage.description,
+                      isLocked ? _lockedReason() : stage.description,
                       style: TextStyle(
                           color: isLocked
                               ? Colors.redAccent.withOpacity(0.8)
@@ -345,6 +373,31 @@ class _StagePage extends StatelessWidget {
                             ],
                           ),
                         ),
+                        if (stage.requiredSteps > 0) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.4),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                const Text('🚶',
+                                    style: TextStyle(fontSize: 12)),
+                                const SizedBox(width: 4),
+                                Text('${stage.requiredSteps}보',
+                                    style: TextStyle(
+                                        color: isStepsLocked
+                                            ? Colors.red
+                                            : const Color(0xFF66D4FF),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ],
