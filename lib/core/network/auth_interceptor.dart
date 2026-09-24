@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../constants/api_constants.dart';
 import '../error/app_exception.dart';
 import '../storage/secure_storage.dart';
@@ -81,7 +82,7 @@ class AuthInterceptor extends Interceptor {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         backgroundColor: const Color(0xFF1C0E04),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Row(
@@ -101,9 +102,13 @@ class AuthInterceptor extends Interceptor {
             child: ElevatedButton(
               onPressed: () {
                 _isShowingDialog = false;
-                Navigator.of(context, rootNavigator: true).pop();
-                navigatorKey.currentState?.pushNamedAndRemoveUntil(
-                    '/login', (_) => false);
+                // 다이얼로그 닫기
+                Navigator.of(dialogContext, rootNavigator: true).pop();
+                // GoRouter로 로그인 화면 이동 (기존 스택 전부 제거)
+                final rootContext = navigatorKey.currentContext;
+                if (rootContext != null) {
+                  GoRouter.of(rootContext).go('/login');
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFEF7910),

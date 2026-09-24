@@ -8,6 +8,8 @@ import '../../routine/screens/workout_history_screen.dart';
 import '../../currency/provider/currency_provider.dart';
 import '../../../data/models/routine_model.dart';
 import '../../step/step_provider.dart';
+import '../../step/widgets/step_voyage_widget.dart';
+import '../../auth/provider/auth_provider.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -178,33 +180,14 @@ class _StepTab extends StatelessWidget {
     final step = context.watch<StepProvider>();
     final currency = context.watch<CurrencyProvider>();
 
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
       child: Column(
         children: [
           const SizedBox(height: 20),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 24),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.06),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.white.withOpacity(0.08)),
-            ),
-            child: Column(
-              children: [
-                Text('오늘 걸음 수',
-                    style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.5))),
-                const SizedBox(height: 8),
-                Text(
-                  _formatSteps(step.todaySteps),
-                  style: const TextStyle(
-                      fontSize: 52, fontWeight: FontWeight.bold, color: Color(0xFF42A5F5)),
-                ),
-                Text('보', style: TextStyle(fontSize: 16, color: Colors.white.withOpacity(0.5))),
-              ],
-            ),
-          ),
+          // 걸음수 항해 (누적/오늘 걸음수 + 배 + 트랙)
+          const StepVoyageWidget(),
+
           const SizedBox(height: 16),
           Container(
             width: double.infinity,
