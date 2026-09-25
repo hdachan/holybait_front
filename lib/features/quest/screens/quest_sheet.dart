@@ -82,29 +82,38 @@ class _QuestSheetState extends State<_QuestSheet> {
           ),
           const Divider(height: 1, color: Colors.white12),
 
-          // 탭 (튜토리얼 / 일일 / 주간)
+          // 탭 (튜토리얼 / 일일 / 주간 / 업적)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-            child: Row(
-              children: [
-                _QuestTab(
-                  label: '튜토리얼',
-                  isSelected: _selectedType == 'tutorial',
-                  onTap: () => _switchTab('tutorial'),
-                ),
-                const SizedBox(width: 8),
-                _QuestTab(
-                  label: '일일',
-                  isSelected: _selectedType == 'daily',
-                  onTap: () => _switchTab('daily'),
-                ),
-                const SizedBox(width: 8),
-                _QuestTab(
-                  label: '주간',
-                  isSelected: _selectedType == 'weekly',
-                  onTap: () => _switchTab('weekly'),
-                ),
-              ],
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _QuestTab(
+                    label: '튜토리얼',
+                    isSelected: _selectedType == 'tutorial',
+                    onTap: () => _switchTab('tutorial'),
+                  ),
+                  const SizedBox(width: 8),
+                  _QuestTab(
+                    label: '일일',
+                    isSelected: _selectedType == 'daily',
+                    onTap: () => _switchTab('daily'),
+                  ),
+                  const SizedBox(width: 8),
+                  _QuestTab(
+                    label: '주간',
+                    isSelected: _selectedType == 'weekly',
+                    onTap: () => _switchTab('weekly'),
+                  ),
+                  const SizedBox(width: 8),
+                  _QuestTab(
+                    label: '업적',
+                    isSelected: _selectedType == 'achievement',
+                    onTap: () => _switchTab('achievement'),
+                  ),
+                ],
+              ),
             ),
           ),
 
@@ -117,7 +126,8 @@ class _QuestSheetState extends State<_QuestSheet> {
                 : quest.quests.isEmpty
                 ? Padding(
               padding: const EdgeInsets.all(40),
-              child: Text('아직 준비 중인 퀘스트예요',
+              child: Text(
+                  quest.error ?? '아직 준비 중인 퀘스트예요',
                   style: TextStyle(
                       color: Colors.white.withOpacity(0.3),
                       fontSize: 13)),

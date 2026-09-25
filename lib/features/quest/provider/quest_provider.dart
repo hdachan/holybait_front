@@ -6,16 +6,23 @@ class QuestProvider extends ChangeNotifier {
   final _repository = QuestRepository();
 
   // type별로 따로 보관 (tutorial / daily / weekly)
+  static const List<String> _allTypes = [
+    'tutorial',
+    'daily',
+    'weekly',
+    'achievement',
+  ];
+
   final Map<String, List<QuestModel>> _questsByType = {
-    'tutorial': [],
-    'daily': [],
-    'weekly': [],
+    for (final t in _allTypes) t: <QuestModel>[],
   };
   final Map<String, bool> _loadingByType = {
-    'tutorial': false,
-    'daily': false,
-    'weekly': false,
+    for (final t in _allTypes) t: false,
   };
+
+  // 현재 화면에 보여주는 탭 (늦게 도착한 다른 탭 응답이 덮어쓰지 않도록)
+  String _currentType = 'tutorial';
+  String get currentType => _currentType;
 
   String? _error;
   String? get error => _error;
@@ -41,26 +48,36 @@ class QuestProvider extends ChangeNotifier {
       (_questsByType[type] ?? []).any((q) => q.isCompleted);
 
   Future<void> loadQuests({String type = 'tutorial'}) async {
+    _currentType = type;
     isLoading = true;
     _loadingByType[type] = true;
+    // 탭 전환 즉시 이전 탭 목록을 비움 (다른 탭 내용이 남아 보이지 않게)
+    quests = _questsByType[type] ?? [];
+    _error = null;
     notifyListeners();
     try {
       final result = await _repository.getMyQuests(type: type);
       _questsByType[type] = result;
-      quests = result;
-      _error = null;
+      if (_currentType == type) {
+        quests = result;
+        _error = null;
+      }
     } catch (e) {
-      _error = '퀘스트를 불러오지 못했습니다.';
+      _questsByType[type] = [];
+      if (_currentType == type) {
+        quests = [];
+        _error = '퀘스트를 불러오지 못했습니다.';
+      }
     } finally {
-      isLoading = false;
       _loadingByType[type] = false;
+      if (_currentType == type) isLoading = false;
       notifyListeners();
     }
   }
 
   // 배지 갱신용 — 3개 타입 전부 조용히 불러오기 (로딩 표시 없이)
   Future<void> refreshAllBadges() async {
-    for (final type in ['tutorial', 'daily', 'weekly']) {
+    for (final type in _allTypes) {
       try {
         final result = await _repository.getMyQuests(type: type);
         _questsByType[type] = result;

@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../provider/auth_provider.dart';
+import 'onboarding_screen.dart' show kOnboardingDoneKey;
 import '../../../core/network/api_client.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -39,7 +41,11 @@ class _SplashScreenState extends State<SplashScreen> {
     if (status == AuthStatus.authenticated) {
       context.go('/home');
     } else {
-      context.go('/onboarding');
+      // 온보딩을 한 번이라도 끝냈으면 바로 로그인, 아니면 온보딩
+      final prefs = await SharedPreferences.getInstance();
+      final onboardingDone = prefs.getBool(kOnboardingDoneKey) ?? false;
+      if (!mounted) return;
+      context.go(onboardingDone ? '/login' : '/onboarding');
     }
   }
 
