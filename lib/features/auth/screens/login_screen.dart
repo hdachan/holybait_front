@@ -12,12 +12,14 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  // dispose에서 context를 쓰지 않도록 참조를 미리 저장
+  late final AuthProvider _auth;
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<AuthProvider>().addListener(_onAuthChange);
-    });
+    _auth = context.read<AuthProvider>();
+    _auth.addListener(_onAuthChange);
   }
 
   void _onAuthChange() {
@@ -93,7 +95,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   void dispose() {
-    context.read<AuthProvider>().removeListener(_onAuthChange);
+    _auth.removeListener(_onAuthChange);
     super.dispose();
   }
 

@@ -16,8 +16,19 @@ class AuthInterceptor extends Interceptor {
 
   AuthInterceptor(this.dio);
 
+  // 토큰 없이 호출해야 하는 인증 관련 경로
+  bool _isAuthPath(String path) =>
+      path.contains('/auth/login') || path.contains('/auth/refresh');
+
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) async {
+    // 로그인/토큰갱신 요청에는 (만료됐을 수 있는) 기존 토큰을 붙이지 않음
+    if (_isAuthPath(options.path)) {
+      options.headers.remove('Authorization');
+      handler.next(options);
+      return;
+    }
+
     final token = await SecureStorage.getAccessToken();
     if (token != null) {
       options.headers['Authorization'] = 'Bearer $token';
@@ -27,6 +38,12 @@ class AuthInterceptor extends Interceptor {
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) async {
+    // 로그인/토큰갱신 요청 실패는 세션만료 처리하지 않고 그대로 전달
+    if (_isAuthPath(err.requestOptions.path)) {
+      handler.next(err);
+      return;
+    }
+
     final statusCode = err.response?.statusCode;
     if (statusCode == null) {
       handler.next(err);

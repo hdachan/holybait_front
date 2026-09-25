@@ -32,6 +32,9 @@ class _BattleScreenState extends State<BattleScreen>
   late AnimationController _monsterJumpCtrl;
   late Animation<double> _monsterJumpAnim;
 
+  // 몬스터 사망 시 서서히 사라지는 애니메이션
+  late AnimationController _monsterDeathCtrl;
+
   // 공격 이펙트 (플레이어 공격 / 몬스터 공격 각각 별도)
   late AnimationController _playerAttackEffectCtrl;
   late AnimationController _monsterAttackEffectCtrl;
@@ -92,6 +95,9 @@ class _BattleScreenState extends State<BattleScreen>
     ]).animate(CurvedAnimation(
         parent: _monsterJumpCtrl, curve: Curves.easeInOut));
 
+    _monsterDeathCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 900));
+
     _playerAttackEffectCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 400));
     _monsterAttackEffectCtrl = AnimationController(
@@ -120,6 +126,7 @@ class _BattleScreenState extends State<BattleScreen>
     _monsterJumpCtrl.dispose();
     _playerAttackEffectCtrl.dispose();
     _monsterAttackEffectCtrl.dispose();
+    _monsterDeathCtrl.dispose();
     super.dispose();
   }
 
@@ -154,6 +161,19 @@ class _BattleScreenState extends State<BattleScreen>
       _monsterFlashCtrl.forward(from: 0).then((_) {
         if (mounted) _monsterFlashCtrl.reverse();
       });
+
+      // 맞는 순간 바로 HP 반영
+      setState(() {
+        _playerHp = log.playerHpAfter;
+        _monsterHp = log.monsterHpAfter;
+      });
+
+      // 몬스터 HP 0 → 흔들림 끝난 뒤 서서히 사라짐
+      if (log.monsterHpAfter <= 0) {
+        Future.delayed(const Duration(milliseconds: 300), () {
+          if (mounted) _monsterDeathCtrl.forward(from: 0);
+        });
+      }
     } else {
       setState(() => _monsterIsAttacking = true);
       _monsterJumpCtrl.forward(from: 0);
@@ -170,21 +190,22 @@ class _BattleScreenState extends State<BattleScreen>
         if (mounted) _playerFlashCtrl.reverse();
       });
 
+      // 맞는 순간 바로 HP 반영
+      setState(() {
+        _playerHp = log.playerHpAfter;
+        _monsterHp = log.monsterHpAfter;
+      });
+
       // 프레임 수 * 속도만큼 정확히 대기
       await Future.delayed(
           Duration(milliseconds: _frameMs * _monsterTotalFrames));
       if (mounted) setState(() => _monsterIsAttacking = false);
     }
 
-    await Future.delayed(const Duration(milliseconds: 300));
-    if (mounted) {
-      setState(() {
-        _playerHp = log.playerHpAfter;
-        _monsterHp = log.monsterHpAfter;
-      });
-    }
-
-    await Future.delayed(const Duration(milliseconds: 600));
+    // 몬스터가 쓰러졌으면 사라지는 연출을 기다렸다가 결과로
+    final monsterDead = log.isPlayer && log.monsterHpAfter <= 0;
+    await Future.delayed(
+        Duration(milliseconds: monsterDead ? 1300 : 900));
     if (mounted) {
       setState(() => _lastDamage = null);
       await Future.delayed(const Duration(milliseconds: 100));
@@ -616,15 +637,28 @@ class _BattleScreenState extends State<BattleScreen>
                     alignment: Alignment.center,
                     children: [
                       AnimatedBuilder(
-                        animation: Listenable.merge(
-                            [_monsterShakeAnim, _monsterJumpAnim]),
-                        builder: (_, child) => Transform.translate(
-                          offset: Offset(
-                            _monsterShakeAnim.value,
-                            _monsterJumpAnim.value,
-                          ),
-                          child: child,
-                        ),
+                        animation: Listenable.merge([
+                          _monsterShakeAnim,
+                          _monsterJumpAnim,
+                          _monsterDeathCtrl,
+                        ]),
+                        builder: (_, child) {
+                          final d = Curves.easeIn
+                              .transform(_monsterDeathCtrl.value);
+                          return Opacity(
+                            opacity: 1.0 - d,
+                            child: Transform.translate(
+                              offset: Offset(
+                                _monsterShakeAnim.value,
+                                _monsterJumpAnim.value + d * 30,
+                              ),
+                              child: Transform.scale(
+                                scale: 1.0 - d * 0.25,
+                                child: child,
+                              ),
+                            ),
+                          );
+                        },
                         child: AnimatedBuilder(
                           animation: _monsterFlashCtrl,
                           builder: (_, child) => ColorFiltered(
@@ -942,11 +976,16 @@ class _HpBar extends StatelessWidget {
           const SizedBox(height: 4),
           ClipRRect(
             borderRadius: BorderRadius.circular(3),
-            child: LinearProgressIndicator(
-              value: ratio,
-              minHeight: 8,
-              backgroundColor: Colors.grey.withOpacity(0.3),
-              valueColor: AlwaysStoppedAnimation(barColor),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(end: ratio),
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeOut,
+              builder: (_, value, __) => LinearProgressIndicator(
+                value: value,
+                minHeight: 8,
+                backgroundColor: Colors.grey.withOpacity(0.3),
+                valueColor: AlwaysStoppedAnimation(barColor),
+              ),
             ),
           ),
           const SizedBox(height: 5),
