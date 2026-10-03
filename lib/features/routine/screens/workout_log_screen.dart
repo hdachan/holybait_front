@@ -30,6 +30,7 @@ class _WorkoutLogScreenState extends State<WorkoutLogScreen>
 
   late List<List<_SetGroup>> _allSets;
   late List<List<WorkoutSetModel>> _allRecentSets;
+  late List<String?> _allRecentDates; // "최근 기록" 옆에 표시할 날짜
 
   bool _isSaving = false;
   bool _isLoaded = false;
@@ -48,6 +49,7 @@ class _WorkoutLogScreenState extends State<WorkoutLogScreen>
 
     _allSets = List.generate(widget.exercises.length, (_) => []);
     _allRecentSets = List.generate(widget.exercises.length, (_) => []);
+    _allRecentDates = List.generate(widget.exercises.length, (_) => null);
 
     _coinAnim = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 1200));
@@ -88,11 +90,14 @@ class _WorkoutLogScreenState extends State<WorkoutLogScreen>
       if (mounted) {
         setState(() {
           if (response.isToday) {
+            // 오늘 기록은 입력칸에, 지난번 기록은 "최근 기록"에
             _allSets[index] = _buildGroupsFromSets(response.sets);
-            _allRecentSets[index] = [];
+            _allRecentSets[index] = response.previousSets;
+            _allRecentDates[index] = response.previousLoggedDate;
           } else {
             _allSets[index] = [_SetGroup(setNumber: 1)];
             _allRecentSets[index] = response.sets;
+            _allRecentDates[index] = response.loggedDate;
           }
         });
       }
@@ -405,6 +410,7 @@ class _WorkoutLogScreenState extends State<WorkoutLogScreen>
   Widget _buildEditor(int index) {
     final groups = _allSets[index];
     final recent = _allRecentSets[index];
+    final recentDate = _allRecentDates[index];
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
@@ -452,11 +458,19 @@ class _WorkoutLogScreenState extends State<WorkoutLogScreen>
 
         // 최근 기록
         Divider(height: 32, color: Colors.white.withOpacity(0.08)),
-        Text('최근 기록',
-            style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-                color: Colors.white.withOpacity(0.8))),
+        Row(children: [
+          Text('최근 기록',
+              style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: Colors.white.withOpacity(0.8))),
+          if (recentDate != null && recent.isNotEmpty) ...[
+            const SizedBox(width: 8),
+            Text(recentDate,
+                style: TextStyle(
+                    fontSize: 13, color: Colors.white.withOpacity(0.4))),
+          ],
+        ]),
         const SizedBox(height: 8),
         if (recent.isEmpty)
           Text('최근 기록이 없습니다.',

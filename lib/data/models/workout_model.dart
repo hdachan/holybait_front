@@ -27,15 +27,27 @@ class WorkoutSetModel {
 class RecentSetsResponse {
   final String? loggedDate; // "2026-05-26" 형식
   final List<WorkoutSetModel> sets;
+  // 오늘 이전의 가장 최근 기록 (없으면 null / 빈 목록)
+  final String? previousLoggedDate;
+  final List<WorkoutSetModel> previousSets;
 
-  RecentSetsResponse({required this.loggedDate, required this.sets});
+  RecentSetsResponse({
+    required this.loggedDate,
+    required this.sets,
+    this.previousLoggedDate,
+    this.previousSets = const [],
+  });
 
   factory RecentSetsResponse.fromJson(Map<String, dynamic> json) {
+    List<WorkoutSetModel> parseSets(dynamic list) => (list as List? ?? [])
+        .map((s) => WorkoutSetModel.fromJson(s as Map<String, dynamic>))
+        .toList();
+
     return RecentSetsResponse(
       loggedDate: json['loggedDate']?.toString(),
-      sets: (json['sets'] as List? ?? [])
-          .map((s) => WorkoutSetModel.fromJson(s as Map<String, dynamic>))
-          .toList(),
+      sets: parseSets(json['sets']),
+      previousLoggedDate: json['previousLoggedDate']?.toString(),
+      previousSets: parseSets(json['previousSets']),
     );
   }
 
