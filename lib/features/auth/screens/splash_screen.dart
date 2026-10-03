@@ -37,9 +37,10 @@ class _SplashScreenState extends State<SplashScreen> {
     await context.read<AuthProvider>().checkAuth();
     if (!mounted) return;
 
-    final status = context.read<AuthProvider>().status;
-    if (status == AuthStatus.authenticated) {
-      context.go('/home');
+    final auth = context.read<AuthProvider>();
+    if (auth.status == AuthStatus.authenticated) {
+      // 동의를 마치지 않은 유저는 동의 화면으로
+      context.go(auth.needsConsent ? '/consent' : '/home');
     } else {
       // 온보딩을 한 번이라도 끝냈으면 바로 로그인, 아니면 온보딩
       final prefs = await SharedPreferences.getInstance();

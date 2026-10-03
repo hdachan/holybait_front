@@ -77,16 +77,28 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // 동의 완료
-  Future<void> completeConsent({required bool marketingAgreed}) async {
+  // 동의 완료 — 서버 저장에 성공했을 때만 true
+  Future<bool> completeConsent({required bool marketingAgreed}) async {
     try {
       await _repository.completeConsent(marketingAgreed: marketingAgreed);
       _needsConsent = false;
       _user = await _repository.getMe();
       notifyListeners();
+      return true;
     } catch (e) {
       _errorMessage = '동의 처리에 실패했습니다.';
       notifyListeners();
+      return false;
+    }
+  }
+
+  // 서버의 최신 내 정보로 갱신 (걸음 저장 후 누적 걸음 반영 등)
+  Future<void> refreshUser() async {
+    try {
+      _user = await _repository.getMe();
+      notifyListeners();
+    } catch (_) {
+      // 실패하면 기존 정보 유지
     }
   }
 

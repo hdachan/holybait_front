@@ -42,6 +42,8 @@ final GoRouter router = GoRouter(
     if (state.matchedLocation == '/home') {
       final auth = context.read<AuthProvider>();
       if (auth.user == null) return '/';
+      // 동의 전에는 홈 진입 불가 (웹 새로고침·직접 이동 포함)
+      if (auth.needsConsent) return '/consent';
     }
     return null;
   },

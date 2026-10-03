@@ -34,9 +34,18 @@ class _ConsentScreenState extends State<ConsentScreen> {
     setState(() => _isSaving = true);
 
     final auth = context.read<AuthProvider>();
-    await auth.completeConsent(marketingAgreed: _marketingAgreed);
+    final success = await auth.completeConsent(marketingAgreed: _marketingAgreed);
+    if (!mounted) return;
 
-    if (mounted) context.go('/home');
+    if (success) {
+      context.go('/home');
+    } else {
+      setState(() => _isSaving = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(auth.errorMessage ?? '동의 처리에 실패했습니다.'),
+        behavior: SnackBarBehavior.floating,
+      ));
+    }
   }
 
   @override
