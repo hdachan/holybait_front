@@ -28,7 +28,10 @@ class _HomeScreenState extends State<HomeScreen>
     _tabController = TabController(length: 2, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<RoutineProvider>().loadRoutines();
-      context.read<StepProvider>().init();
+      // 걸음이 서버에 저장되면 누적 걸음(내 정보)을 다시 받아옴
+      final step = context.read<StepProvider>();
+      step.onStepLogSaved = context.read<AuthProvider>().refreshUser;
+      step.init();
       context.read<CurrencyProvider>().load();
     });
   }
@@ -276,6 +279,12 @@ class _StepTab extends StatelessWidget {
             const SizedBox(height: 12),
             Text(step.error!, style: const TextStyle(fontSize: 12, color: Colors.redAccent)),
           ],
+          if (step.permissionDenied)
+            TextButton(
+              onPressed: step.requestPermissionAgain,
+              child: const Text('권한 허용하기',
+                  style: TextStyle(color: Color(0xFF42A5F5), fontWeight: FontWeight.bold)),
+            ),
         ],
       ),
     );

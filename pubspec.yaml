@@ -34,6 +34,7 @@ dependencies:
 
   #svg
   flutter_svg: ^2.0.9
+  permission_handler: ^11.4.0  # 13.x(android 14.1.0)는 Kotlin 2.3·AGP 9 필요 → 현재 프로젝트(AGP 8.1, Kotlin 1.8)에서 빌드 실패
 
 dev_dependencies:
   flutter_test:

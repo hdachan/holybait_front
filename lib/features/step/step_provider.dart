@@ -1,21 +1,46 @@
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:pedometer/pedometer.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../data/datasources/step_remote_ds.dart';
 import '../../data/models/step_reward_model.dart';
 
-
+// 걸음 측정 방식
+// - 휴대폰 만보기 센서는 앱이 꺼져 있어도 "부팅 후 누적 걸음"을 계속 셈
+// - 앱은 마지막으로 본 센서 값(last_counter)을 기억하고, 새 값과의 차이를 오늘 걸음에 더함
+//   → 앱이 꺼져 있던 동안 걸은 걸음도 다음에 켤 때 반영됨
+// - 날짜가 바뀌면 그날 걸음을 전송 대기 목록에 넣고, "걸은 날짜"로 서버에 저장 (누적 걸음은 다음 날 반영)
 class StepProvider extends ChangeNotifier {
   final _remote = StepRemoteDataSource();
 
-  int _todaySteps = 0;           // 오늘 총 걸음 수
-  int _alreadyRewardedSteps = 0; // 이미 보상받은 걸음 수 (코인 * 1000)
+  static const _kStepDate = 'step_date';                 // 오늘 걸음의 날짜
+  static const _kTodaySteps = 'today_steps';             // 오늘 걸음 수
+  static const _kRewardedSteps = 'already_rewarded_steps'; // 이미 보상받은 걸음 수 (코인 * 1000)
+  static const _kLastCounter = 'last_counter';           // 마지막으로 본 센서 값
+  static const _kPendingLogs = 'pending_step_logs';      // 서버 전송 대기 {"2026-10-03": 8000}
+
+  SharedPreferences? _prefs;
+  StreamSubscription<StepCount>? _subscription;
+
+  String _stepDate = '';
+  int _todaySteps = 0;
+  int _alreadyRewardedSteps = 0;
+  int? _lastCounter;
   bool _isLoading = false;
+  bool _permissionDenied = false;
   String? _error;
+
+  // 걸음 기록이 서버에 저장됐을 때 호출 (누적 걸음 화면 갱신용)
+  VoidCallback? onStepLogSaved;
 
   int get todaySteps => _todaySteps;
   bool get isLoading => _isLoading;
+  bool get permissionDenied => _permissionDenied;
   String? get error => _error;
 
   // 받을 수 있는 코인 수
@@ -27,73 +52,149 @@ class StepProvider extends ChangeNotifier {
 
   // 앱 시작 시 초기화
   Future<void> init() async {
-    await _sendPendingSteps(); // 못 보낸 날짜 걸음 수 처리
-    await _loadTodaySteps();   // 오늘 걸음 수 로드
-    _startPedometer();         // 만보계 시작
+    final prefs = _prefs ??= await SharedPreferences.getInstance();
+
+    // 이전 방식에서 쓰던 키 정리
+    await prefs.remove('base_steps');
+    await prefs.remove('last_sent_date');
+
+    _stepDate = prefs.getString(_kStepDate) ?? _today();
+    _todaySteps = prefs.getInt(_kTodaySteps) ?? 0;
+    _alreadyRewardedSteps = prefs.getInt(_kRewardedSteps) ?? 0;
+    _lastCounter = prefs.getInt(_kLastCounter);
+    _rollOverIfNewDay();
+    _saveToday();
+    notifyListeners();
+
+    await _sendPendingLogs();
+    await _startPedometer();
+  }
+
+  // 권한을 거절한 뒤 "권한 허용하기"를 눌렀을 때
+  Future<void> requestPermissionAgain() async {
+    if (await Permission.activityRecognition.isPermanentlyDenied) {
+      // 다시 묻지 않음 상태 → 앱 설정 화면으로 이동
+      await openAppSettings();
+      return;
+    }
+    await _startPedometer();
   }
 
   // 만보계 시작
-  void _startPedometer() {
-    Pedometer.stepCountStream.listen(
-          (StepCount event) async {
-        final prefs = await SharedPreferences.getInstance();
-        final baseSteps = prefs.getInt('base_steps') ?? event.steps;
+  Future<void> _startPedometer() async {
+    if (kIsWeb) {
+      _error = '걸음 수는 휴대폰 앱에서만 측정할 수 있어요.';
+      notifyListeners();
+      return;
+    }
 
-        // 오늘 걸음 수 = 현재 누적 - 오늘 시작 기준값
-        _todaySteps = event.steps - baseSteps;
-        if (_todaySteps < 0) _todaySteps = 0;
+    // Android 10 이상은 신체 활동 권한을 실행 중에 받아야 센서 값이 들어옴
+    final status = await Permission.activityRecognition.request();
+    if (!status.isGranted) {
+      _permissionDenied = true;
+      _error = '걸음 수를 측정하려면 신체 활동 권한이 필요해요.';
+      notifyListeners();
+      return;
+    }
 
-        await prefs.setInt('today_steps', _todaySteps);
-        notifyListeners();
-      },
+    _permissionDenied = false;
+    _error = null;
+    notifyListeners();
+
+    await _subscription?.cancel();
+    _subscription = Pedometer.stepCountStream.listen(
+      _onStepCount,
       onError: (error) {
-        _error = '만보계를 사용할 수 없습니다.';
+        _error = '이 기기에서는 만보계를 사용할 수 없어요.';
         notifyListeners();
       },
     );
   }
 
-  // 로컬에 저장된 오늘 걸음 수 로드
-  Future<void> _loadTodaySteps() async {
-    final prefs = await SharedPreferences.getInstance();
-    final savedDate = prefs.getString('step_date') ?? '';
-    final today = DateTime.now().toIso8601String().substring(0, 10);
+  // 센서 값 수신 — 값은 "부팅 후 누적 걸음"
+  void _onStepCount(StepCount event) {
+    final counter = event.steps;
+    final last = _lastCounter;
 
-    if (savedDate != today) {
-      // 날짜가 바뀜 → 초기화
-      await prefs.setString('step_date', today);
-      await prefs.setInt('today_steps', 0);
-      await prefs.setInt('already_rewarded_steps', 0);
-      _todaySteps = 0;
-      _alreadyRewardedSteps = 0;
+    int delta;
+    if (last == null) {
+      delta = 0; // 첫 측정 — 기준값만 저장
+    } else if (counter >= last) {
+      delta = counter - last;
     } else {
-      _todaySteps = prefs.getInt('today_steps') ?? 0;
-      _alreadyRewardedSteps = prefs.getInt('already_rewarded_steps') ?? 0;
+      delta = counter; // 재부팅으로 센서가 0부터 다시 셈
     }
+    _lastCounter = counter;
+    _prefs?.setInt(_kLastCounter, counter);
+
+    // 앱을 켜둔 채 날짜가 바뀐 경우 어제 걸음을 전송 대기로 넘김
+    final dayChanged = _rollOverIfNewDay();
+    _todaySteps += delta;
+    _saveToday();
     notifyListeners();
+
+    if (dayChanged) _sendPendingLogs();
   }
 
-  // 못 보낸 날짜 걸음 수 서버 전송
-  Future<void> _sendPendingSteps() async {
-    final prefs = await SharedPreferences.getInstance();
-    final lastSentDate = prefs.getString('last_sent_date') ?? '';
-    final today = DateTime.now().toIso8601String().substring(0, 10);
+  // 날짜가 바뀌었으면 지난 날 걸음을 전송 대기 목록에 넣고 오늘 값을 초기화
+  bool _rollOverIfNewDay() {
+    final today = _today();
+    if (_stepDate == today) return false;
 
-    if (lastSentDate.isNotEmpty && lastSentDate != today) {
-      // 어제(또는 마지막 날) 걸음 수 전송
-      final pendingSteps = prefs.getInt('today_steps') ?? 0;
-      if (pendingSteps > 0) {
-        try {
-          await _remote.saveStepLog(pendingSteps, lastSentDate);
-          await prefs.setString('last_sent_date', today);
-        } catch (_) {
-          // 전송 실패해도 앱 실행은 계속
-        }
+    if (_todaySteps > 0) {
+      final pending = _readPending();
+      pending[_stepDate] = _todaySteps;
+      _writePending(pending);
+    }
+    _stepDate = today;
+    _todaySteps = 0;
+    _alreadyRewardedSteps = 0;
+    _saveToday();
+    return true;
+  }
+
+  // 전송 대기 중인 걸음을 걸은 날짜로 서버에 저장 — 실패한 날짜는 남겨두고 다음에 재전송
+  Future<void> _sendPendingLogs() async {
+    final pending = _readPending();
+    if (pending.isEmpty) return;
+
+    var savedAny = false;
+    for (final entry in pending.entries.toList()) {
+      try {
+        await _remote.saveStepLog(entry.value, entry.key);
+        pending.remove(entry.key);
+        savedAny = true;
+      } catch (_) {
+        // 네트워크 오류 등 — 다음 실행 때 다시 시도
       }
-    } else if (lastSentDate.isEmpty) {
-      await prefs.setString('last_sent_date', today);
+    }
+    _writePending(pending);
+
+    if (savedAny) onStepLogSaved?.call();
+  }
+
+  Map<String, int> _readPending() {
+    final raw = _prefs?.getString(_kPendingLogs);
+    if (raw == null || raw.isEmpty) return {};
+    try {
+      final decoded = jsonDecode(raw) as Map<String, dynamic>;
+      return decoded.map((date, steps) => MapEntry(date, (steps as num).toInt()));
+    } catch (_) {
+      return {};
     }
   }
+
+  void _writePending(Map<String, int> pending) {
+    _prefs?.setString(_kPendingLogs, jsonEncode(pending));
+  }
+
+  void _saveToday() {
+    _prefs?.setString(_kStepDate, _stepDate);
+    _prefs?.setInt(_kTodaySteps, _todaySteps);
+    _prefs?.setInt(_kRewardedSteps, _alreadyRewardedSteps);
+  }
+
+  String _today() => DateTime.now().toIso8601String().substring(0, 10);
 
   // 보상 받기 (버튼 누를 때)
   Future<StepRewardModel?> claimReward() async {
@@ -109,8 +210,7 @@ class StepProvider extends ChangeNotifier {
       if (result.success) {
         // 받은 코인만큼 already_rewarded_steps 업데이트
         _alreadyRewardedSteps += result.grantedCoins * 1000;
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setInt('already_rewarded_steps', _alreadyRewardedSteps);
+        _saveToday();
       }
 
       return result;
@@ -121,5 +221,11 @@ class StepProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
   }
 }
