@@ -45,6 +45,11 @@ flutter_launcher_icons: # ✅ 추가 (최상위 레벨, flutter: 와 같은 들�
   android: true
   ios: true
   image_path: "assets/images/app_icon/app_icon.png"
+  web:                                              # 👈 이 부분 추가
+    generate: true
+    image_path: "assets/images/app_icon/app_icon.png"
+    background_color: "#hexcode"
+    theme_color: "#hexcode"
 
 
 flutter:
