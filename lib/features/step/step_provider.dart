@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:pedometer/pedometer.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -23,6 +22,7 @@ class StepProvider extends ChangeNotifier {
   static const _kRewardedSteps = 'already_rewarded_steps'; // 이미 보상받은 걸음 수 (코인 * 1000)
   static const _kLastCounter = 'last_counter';           // 마지막으로 본 센서 값
   static const _kPendingLogs = 'pending_step_logs';      // 서버 전송 대기 {"2026-10-03": 8000}
+  static const _maxPendingDays = 3; // 서버 StepService.MAX_STEP_LOG_DAYS_AGO 와 맞춤
 
   SharedPreferences? _prefs;
   StreamSubscription<StepCount>? _subscription;
@@ -157,6 +157,11 @@ class StepProvider extends ChangeNotifier {
   Future<void> _sendPendingLogs() async {
     final pending = _readPending();
     if (pending.isEmpty) return;
+
+    // 서버는 3일 전까지만 저장함 → 그보다 오래된 날짜는 보내지 않고 정리
+    final oldest = DateTime.now().subtract(const Duration(days: _maxPendingDays));
+    final oldestStr = oldest.toIso8601String().substring(0, 10);
+    pending.removeWhere((date, _) => date.compareTo(oldestStr) < 0);
 
     var savedAny = false;
     for (final entry in pending.entries.toList()) {

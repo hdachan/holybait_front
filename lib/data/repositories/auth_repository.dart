@@ -7,8 +7,13 @@ import '../models/user_model.dart';
 class AuthRepository {
   final _remote = AuthRemoteDataSource();
   final _local  = AuthLocalDataSource();
+  static const _googleClientId = String.fromEnvironment('GOOGLE_CLIENT_ID');
+
   final _googleSignIn = GoogleSignIn(
-    clientId: const String.fromEnvironment('GOOGLE_CLIENT_ID'),
+    clientId: _googleClientId,
+    // Android: 서버(웹 클라이언트 ID)용 idToken 을 받아 서버의 idToken 검증 경로로 로그인
+    // (웹은 serverClientId 를 지원하지 않음)
+    serverClientId: kIsWeb || _googleClientId.isEmpty ? null : _googleClientId,
     scopes: ['email', 'profile'],
   );
 
