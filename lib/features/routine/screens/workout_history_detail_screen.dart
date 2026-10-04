@@ -76,6 +76,14 @@ class _RecordCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 일반 세트만 1, 2, 3… 으로 번호 (드롭세트는 번호 없이 DROP)
+    final setRows = <Widget>[];
+    var normalSetNumber = 0;
+    for (final s in record.sets) {
+      if (!s.isDropset) normalSetNumber++;
+      setRows.add(_SetRow(set: s, number: normalSetNumber));
+    }
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -123,7 +131,7 @@ class _RecordCard extends StatelessWidget {
             const SizedBox(height: 10),
 
             // 세트 목록
-            ...record.sets.map((s) => _SetRow(set: s)),
+            ...setRows,
           ],
         ),
       ),
@@ -133,7 +141,8 @@ class _RecordCard extends StatelessWidget {
 
 class _SetRow extends StatelessWidget {
   final SetDetailModel set;
-  const _SetRow({required this.set});
+  final int number; // 화면에 보여줄 세트 번호 (드롭세트 제외하고 센 값)
+  const _SetRow({required this.set, required this.number});
 
   @override
   Widget build(BuildContext context) {
@@ -158,7 +167,7 @@ class _SetRow extends StatelessWidget {
                       color: Colors.orange,
                       fontWeight: FontWeight.bold)),
             )
-                : Text('${set.setNumber}세트',
+                : Text('$number세트',
                 style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 13,

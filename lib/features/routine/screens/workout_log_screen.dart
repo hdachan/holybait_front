@@ -412,6 +412,14 @@ class _WorkoutLogScreenState extends State<WorkoutLogScreen>
     final recent = _allRecentSets[index];
     final recentDate = _allRecentDates[index];
 
+    // 최근 기록 세트 번호 — 일반 세트만 1, 2, 3… (드롭세트는 번호 없이 DROP)
+    final recentNumbers = <int>[];
+    var normalSetNumber = 0;
+    for (final s in recent) {
+      if (!s.isDropset) normalSetNumber++;
+      recentNumbers.add(normalSetNumber);
+    }
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
       children: [
@@ -476,13 +484,15 @@ class _WorkoutLogScreenState extends State<WorkoutLogScreen>
           Text('최근 기록이 없습니다.',
               style: TextStyle(color: Colors.white.withOpacity(0.3)))
         else
-          ...recent.map((s) => Padding(
+          ...recent.asMap().entries.map((entry) {
+            final s = entry.value;
+            return Padding(
             padding: const EdgeInsets.symmetric(vertical: 4),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  s.isDropset ? '  └ DROP' : '${s.setNumber}세트',
+                  s.isDropset ? '  └ DROP' : '${recentNumbers[entry.key]}세트',
                   style: TextStyle(
                     color: s.isDropset
                         ? const Color(0xFFF4A259)
@@ -495,7 +505,8 @@ class _WorkoutLogScreenState extends State<WorkoutLogScreen>
                         color: Colors.white.withOpacity(0.4))),
               ],
             ),
-          )),
+          );
+          }),
         const SizedBox(height: 80),
       ],
     );
