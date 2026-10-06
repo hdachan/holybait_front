@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../data/models/adventure_model.dart';
 import '../../../data/repositories/adventure_repository.dart';
+import '../../../core/error/server_error.dart';
 
 class AdventureProvider extends ChangeNotifier {
   final _repository = AdventureRepository();
@@ -126,7 +127,8 @@ class AdventureProvider extends ChangeNotifier {
       notifyListeners();
       return result;
     } catch (e) {
-      error = e.toString();
+      // 서버 사유("골드가 부족합니다." 등) — 캐릭터 화면이 이 문구로 안내
+      error = serverErrorMessage(e) ?? e.toString();
       notifyListeners();
       return null;
     }

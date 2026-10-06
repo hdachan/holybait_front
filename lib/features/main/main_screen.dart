@@ -4,17 +4,32 @@ import '../home/screens/home_screen.dart';
 import '../character/screens/character_screen.dart';
 import '../settings/screens/settings_screen.dart';
 import '../planet/screens/planet_screen.dart';
+import '../adventure/widgets/pending_battle_dialog.dart';
 import 'provider/main_provider.dart';
 
-class MainScreen extends StatelessWidget {
+class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
 
+  @override
+  State<MainScreen> createState() => _MainScreenState();
+}
+
+class _MainScreenState extends State<MainScreen> {
   static const _screens = [
     HomeScreen(),
     PlanetScreen(),
     CharacterScreen(),
     SettingsScreen(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    // 앱을 켰을 때(로그인 직후 포함) 끝까지 보지 않고 나간 배틀이 있으면 이어하기 팝업
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) checkPendingBattleAndPrompt(context);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

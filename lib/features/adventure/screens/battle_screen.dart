@@ -540,7 +540,7 @@ class _BattleScreenState extends State<BattleScreen>
           builder: (_) => AlertDialog(
             title: const Text('모험 중단'),
             content: const Text(
-                '지금 나가면 보상을 받을 수 없습니다.\n나갔다 들어오면 다시 볼 수 있습니다.\n나가시겠습니까?'),
+                '지금 나가면 보상을 받을 수 없습니다.\n행성에 다시 들어오면 이어서 볼 수 있습니다.\n나가시겠습니까?'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context, false),

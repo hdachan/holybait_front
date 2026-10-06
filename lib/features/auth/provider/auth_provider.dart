@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../../data/models/user_model.dart';
 import '../../../core/error/app_exception.dart';
+import '../../../core/error/server_error.dart';
 import 'package:dio/dio.dart';
 
 enum AuthStatus { initial, loading, authenticated, unauthenticated, banned, deleted, error }
@@ -44,6 +45,17 @@ class AuthProvider extends ChangeNotifier {
       _user = await _repository.getMe();
       _set(AuthStatus.authenticated);
     } on DioException catch (e) {
+      // 정지·탈퇴 계정 — 서버가 code 로 알려줌 → 로그인 화면이 안내 표시
+      final code = serverErrorCode(e);
+      if (code == AuthErrorCode.userBanned.code) {
+        _set(AuthStatus.banned);
+        return;
+      }
+      if (code == AuthErrorCode.userDeleted.code) {
+        _set(AuthStatus.deleted);
+        return;
+      }
+
       if (e.type == DioExceptionType.connectionError ||
           e.type == DioExceptionType.unknown) {
         _errorMessage = '서버에 연결할 수 없습니다.\n잠시 후 다시 시도해주세요.';

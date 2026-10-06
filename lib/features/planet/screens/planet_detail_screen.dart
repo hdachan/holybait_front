@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../data/models/planet_model.dart';
 import '../../adventure/provider/adventure_provider.dart';
 import '../../adventure/screens/battle_screen.dart';
+import '../../adventure/widgets/pending_battle_dialog.dart';
 import '../../currency/provider/currency_provider.dart';
 import '../../auth/provider/auth_provider.dart';
 
@@ -28,8 +29,10 @@ class _PlanetDetailScreenState extends State<PlanetDetailScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<AdventureProvider>().loadStages();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await context.read<AdventureProvider>().loadStages();
+      // 끝까지 보지 않고 나간 배틀이 있으면 이어서 보기 / 포기 팝업
+      if (mounted) await checkPendingBattleAndPrompt(context);
     });
   }
 

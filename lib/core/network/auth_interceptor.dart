@@ -80,7 +80,16 @@ class AuthInterceptor extends Interceptor {
       case AuthErrorCode.accessTokenInvalid:
       case AuthErrorCode.userBanned:
       case AuthErrorCode.userDeleted:
+        // 사용 중 정지·탈퇴되거나 토큰이 잘못된 경우 — 안내 후 로그인 화면으로
         await SecureStorage.clearAll();
+        switch (errorCode) {
+          case AuthErrorCode.userBanned:
+            _showSessionExpiredDialog('정지된 계정입니다.\n고객센터에 문의해주세요.', title: '로그인 불가');
+          case AuthErrorCode.userDeleted:
+            _showSessionExpiredDialog('탈퇴한 계정입니다.', title: '로그인 불가');
+          default:
+            _showSessionExpiredDialog('로그인 정보가 올바르지 않습니다.\n다시 로그인해주세요.');
+        }
         handler.reject(DioException(
           requestOptions: err.requestOptions,
           error: AppException('다시 로그인해주세요.', errorCode: errorCode),
@@ -91,7 +100,7 @@ class AuthInterceptor extends Interceptor {
     }
   }
 
-  void _showSessionExpiredDialog(String message) {
+  void _showSessionExpiredDialog(String message, {String title = '세션 만료'}) {
     final context = navigatorKey.currentContext;
     if (context == null || _isShowingDialog) return;
     _isShowingDialog = true;
@@ -102,11 +111,11 @@ class AuthInterceptor extends Interceptor {
       builder: (dialogContext) => AlertDialog(
         backgroundColor: const Color(0xFF1C0E04),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.lock_outline, color: Color(0xFFEF7910), size: 22),
-            SizedBox(width: 8),
-            Text('세션 만료',
+            const Icon(Icons.lock_outline, color: Color(0xFFEF7910), size: 22),
+            const SizedBox(width: 8),
+            Text(title,
                 style: TextStyle(color: Colors.white, fontSize: 17,
                     fontWeight: FontWeight.bold)),
           ],
