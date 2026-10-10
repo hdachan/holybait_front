@@ -23,6 +23,13 @@ class CurrencyProvider extends ChangeNotifier {
   bool get isCapped => _currency.isCapped;
   bool get isLoading => _isLoading;
 
+  // 로그아웃 시 이전 계정 정보 비우기
+  void reset() {
+    _currency = CurrencyModel(gold: 0, shoeCoin: 0, todayShoeCoin: 0, dailyCap: 20);
+    _isLoading = false;
+    notifyListeners();
+  }
+
   Future<void> load() async {
     _isLoading = true;
     notifyListeners();

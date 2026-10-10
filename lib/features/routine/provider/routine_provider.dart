@@ -18,6 +18,16 @@ class RoutineProvider extends ChangeNotifier {
   List<ExerciseModel> get exercises => _exercises;
   List<ExerciseModel> get selectedExercises => _selectedExercises;
   bool get isLoading => _isLoading;
+
+  // 로그아웃 시 이전 계정 정보 비우기
+  void reset() {
+    _routines = [];
+    _exercises = [];
+    _selectedExercises = [];
+    _isLoading = false;
+    _error = null;
+    notifyListeners();
+  }
   String? get error => _error;
 
   // 루틴 목록 조회

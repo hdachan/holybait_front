@@ -30,8 +30,9 @@ class _HomeScreenState extends State<HomeScreen>
       context.read<RoutineProvider>().loadRoutines();
       // 걸음이 서버에 저장되면 누적 걸음(내 정보)을 다시 받아옴
       final step = context.read<StepProvider>();
-      step.onStepLogSaved = context.read<AuthProvider>().refreshUser;
-      step.init();
+      final auth = context.read<AuthProvider>();
+      step.onStepLogSaved = auth.refreshUser;
+      step.init(owner: auth.user?.uuid ?? '');
       context.read<CurrencyProvider>().load();
     });
   }

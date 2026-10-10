@@ -1,7 +1,10 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import '../../features/auth/provider/auth_provider.dart';
 import '../constants/api_constants.dart';
+import '../session/reset_user_data.dart';
 import '../error/app_exception.dart';
 import '../storage/secure_storage.dart';
 
@@ -133,6 +136,9 @@ class AuthInterceptor extends Interceptor {
                 // GoRouter로 로그인 화면 이동 (기존 스택 전부 제거)
                 final rootContext = navigatorKey.currentContext;
                 if (rootContext != null) {
+                  // 이전 계정 정보 비우기 (다음 로그인 계정에 남지 않게)
+                  rootContext.read<AuthProvider>().clearSession();
+                  resetUserData(rootContext);
                   GoRouter.of(rootContext).go('/login');
                 }
               },

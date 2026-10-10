@@ -18,6 +18,21 @@ class AdventureProvider extends ChangeNotifier {
   bool isCheckingPending = false;
   String? error;
 
+  // 로그아웃 시 이전 계정 정보 비우기
+  void reset() {
+    stages = [];
+    myCharacters = [];
+    activeCharacter = null;
+    currentBattle = null;
+    pendingBattle = null;
+    confirmResult = null;
+    slotCount = 4;
+    isLoading = false;
+    isCheckingPending = false;
+    error = null;
+    notifyListeners();
+  }
+
   Future<void> loadStages() async {
     isLoading = true;
     notifyListeners();

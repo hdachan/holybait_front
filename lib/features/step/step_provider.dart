@@ -22,6 +22,7 @@ class StepProvider extends ChangeNotifier {
   static const _kRewardedSteps = 'already_rewarded_steps'; // 이미 보상받은 걸음 수 (코인 * 1000)
   static const _kLastCounter = 'last_counter';           // 마지막으로 본 센서 값
   static const _kPendingLogs = 'pending_step_logs';      // 서버 전송 대기 {"2026-10-03": 8000}
+  static const _kOwner = 'step_owner';                   // 위 걸음 정보의 주인 (유저 uuid)
   static const _maxPendingDays = 3; // 서버 StepService.MAX_STEP_LOG_DAYS_AGO 와 맞춤
 
   SharedPreferences? _prefs;
@@ -50,13 +51,26 @@ class StepProvider extends ChangeNotifier {
   // 보상 버튼 활성화 여부
   bool get canClaim => claimableCoins > 0;
 
-  // 앱 시작 시 초기화
-  Future<void> init() async {
+  // 앱 시작 시 초기화 — owner: 지금 로그인한 유저 uuid
+  Future<void> init({required String owner}) async {
     final prefs = _prefs ??= await SharedPreferences.getInstance();
 
     // 이전 방식에서 쓰던 키 정리
     await prefs.remove('base_steps');
     await prefs.remove('last_sent_date');
+
+    // 다른 계정이 남긴 걸음 정보면 비우고 0부터 시작
+    // (센서 기준값도 지워서, 지금 계정은 로그인한 뒤 걸은 걸음부터 셈)
+    // 주인 표시가 없는 기존 데이터는 지금 계정 것으로 이어받음
+    final savedOwner = prefs.getString(_kOwner);
+    if (savedOwner != null && savedOwner != owner) {
+      await prefs.remove(_kLastCounter);
+      await prefs.remove(_kStepDate);
+      await prefs.remove(_kTodaySteps);
+      await prefs.remove(_kRewardedSteps);
+      await prefs.remove(_kPendingLogs);
+    }
+    await prefs.setString(_kOwner, owner);
 
     _stepDate = prefs.getString(_kStepDate) ?? _today();
     _todaySteps = prefs.getInt(_kTodaySteps) ?? 0;
@@ -68,6 +82,26 @@ class StepProvider extends ChangeNotifier {
 
     await _sendPendingLogs();
     await _startPedometer();
+  }
+
+  // 로그아웃 직전 — 아직 보내지 못한 지난 걸음을 지금 계정으로 저장 (실패하면 버려짐)
+  Future<void> sendPendingBeforeLogout() async {
+    _prefs ??= await SharedPreferences.getInstance();
+    await _sendPendingLogs();
+  }
+
+  // 로그아웃 시 화면 값 비우기 — 저장된 걸음은 다음 init에서 주인 확인 후 처리
+  void reset() {
+    _subscription?.cancel();
+    _subscription = null;
+    onStepLogSaved = null;
+    _stepDate = '';
+    _todaySteps = 0;
+    _alreadyRewardedSteps = 0;
+    _isLoading = false;
+    _permissionDenied = false;
+    _error = null;
+    notifyListeners();
   }
 
   // 권한을 거절한 뒤 "권한 허용하기"를 눌렀을 때

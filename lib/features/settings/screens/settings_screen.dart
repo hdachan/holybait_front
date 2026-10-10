@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../../auth/provider/auth_provider.dart';
+import '../../step/step_provider.dart';
+import '../../../core/session/reset_user_data.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -330,8 +332,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
+              // 로그아웃 전에 지난 걸음을 이 계정으로 저장
+              await context.read<StepProvider>().sendPendingBeforeLogout();
+              if (!context.mounted) return;
               await context.read<AuthProvider>().logout();
-              if (context.mounted) context.go('/login');
+              if (!context.mounted) return;
+              resetUserData(context);
+              context.go('/login');
             },
             child: const Text('로그아웃',
                 style: TextStyle(color: Color(0xFFF4A259))),
@@ -348,7 +355,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         backgroundColor: const Color(0xFF1E1225),
         title: const Text('회원 탈퇴',
             style: TextStyle(color: Colors.white)),
-        content: const Text('탈퇴하면 모든 데이터가 삭제됩니다.\n정말 탈퇴하시겠습니까?',
+        content: const Text('탈퇴하면 운동 기록, 캐릭터, 재화 등 모든 데이터가 삭제되며 복구할 수 없습니다.\n정말 탈퇴하시겠습니까?',
             style: TextStyle(color: Colors.white70)),
         actions: [
           TextButton(
@@ -360,8 +367,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
-              await context.read<AuthProvider>().withdraw();
-              if (context.mounted) context.go('/login');
+              final ok = await context.read<AuthProvider>().withdraw();
+              if (!context.mounted) return;
+              // 실패하면 계정이 그대로이므로 로그인 화면으로 보내지 않고 안내
+              if (!ok) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                  content: Text('탈퇴에 실패했습니다. 잠시 후 다시 시도해주세요.'),
+                  backgroundColor: Colors.red,
+                ));
+                return;
+              }
+              resetUserData(context);
+              context.go('/login');
             },
             child: const Text('탈퇴',
                 style: TextStyle(color: Colors.redAccent)),

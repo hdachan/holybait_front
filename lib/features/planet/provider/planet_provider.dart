@@ -10,6 +10,15 @@ class PlanetProvider extends ChangeNotifier {
   bool isLoading = false;
   String? error;
 
+  // 로그아웃 시 이전 계정 정보 비우기
+  void reset() {
+    planets = [];
+    selectedPlanet = null;
+    isLoading = false;
+    error = null;
+    notifyListeners();
+  }
+
   Future<void> loadPlanets() async {
     isLoading = true;
     error = null;

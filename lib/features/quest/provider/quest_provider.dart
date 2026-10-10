@@ -31,6 +31,19 @@ class QuestProvider extends ChangeNotifier {
   List<QuestModel> quests = [];
   bool isLoading = false;
 
+  // 로그아웃 시 이전 계정 정보 비우기
+  void reset() {
+    for (final t in _allTypes) {
+      _questsByType[t] = <QuestModel>[];
+      _loadingByType[t] = false;
+    }
+    _currentType = 'tutorial';
+    _error = null;
+    quests = [];
+    isLoading = false;
+    notifyListeners();
+  }
+
   int get completedCount => quests.where((q) => q.isCompleted).length;
   int get claimedCount => quests.where((q) => q.isClaimed).length;
   int get totalCount => quests.length;

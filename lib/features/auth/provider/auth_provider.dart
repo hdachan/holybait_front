@@ -157,15 +157,25 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> withdraw() async {
+  // 세션 만료·정지 등으로 서버가 로그인을 끊었을 때 (토큰은 인터셉터가 이미 지움)
+  void clearSession() {
+    _user = null;
+    _needsConsent = false;
+    _set(AuthStatus.unauthenticated);
+  }
+
+  // 탈퇴 — 서버 처리에 성공했을 때만 true (실패하면 로그인 상태 유지)
+  Future<bool> withdraw() async {
     _set(AuthStatus.loading);
     try {
       await _repository.withdraw();
       _user = null;
       _set(AuthStatus.unauthenticated);
+      return true;
     } catch (e) {
       _errorMessage = e.toString();
-      _set(AuthStatus.error);
+      _set(AuthStatus.authenticated);
+      return false;
     }
   }
 
