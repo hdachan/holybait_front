@@ -60,20 +60,14 @@ class _SplashScreenState extends State<SplashScreen> {
       final res = await ApiClient.dio.get('/app/version');
       final minVersion = res.data['minVersion'] as String;
       final latestVersion = res.data['latestVersion'] as String;
-      final forceUpdate = res.data['forceUpdate'] as bool;
 
-      if (_isOlderVersion(currentVersion, minVersion)) {
-        // 강제 업데이트
+      // 업데이트 규칙 (사용자 결정)
+      // - 최신 버전과 앞자리·가운데 자리가 다르면 강제 업데이트 (예: 1.0.x → 1.1.0)
+      // - 마지막 자리만 다르면 팝업 없음 (예: 1.0.0 → 1.0.3, 스토어 자동 업데이트에 맡김)
+      // - minVersion 미만도 강제 (마지막 자리 업데이트를 꼭 강제해야 할 때 서버에서 사용)
+      if (_isOlderMajorMinor(currentVersion, latestVersion) ||
+          _isOlderVersion(currentVersion, minVersion)) {
         if (mounted) _showUpdateDialog(force: true);
-        return false;
-      }
-
-      if (_isOlderVersion(currentVersion, latestVersion)) {
-        // 권장 업데이트
-        if (mounted) {
-          final skip = await _showUpdateDialog(force: false);
-          if (skip) return true; // 나중에 누르면 계속 진행
-        }
         return false;
       }
 
@@ -82,6 +76,17 @@ class _SplashScreenState extends State<SplashScreen> {
       // 버전 체크 실패 시 그냥 진행
       return true;
     }
+  }
+
+  // 앞자리·가운데 자리만 비교 (1.0.x < 1.1.0 이면 true, 1.0.0 vs 1.0.3 은 false)
+  bool _isOlderMajorMinor(String current, String target) {
+    final c = current.split('.').map(int.parse).toList();
+    final t = target.split('.').map(int.parse).toList();
+    for (int i = 0; i < 2; i++) {
+      if (c[i] < t[i]) return true;
+      if (c[i] > t[i]) return false;
+    }
+    return false;
   }
 
   // 버전 비교 (1.0.0 형식)

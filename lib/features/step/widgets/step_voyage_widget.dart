@@ -265,7 +265,7 @@ class _StepVoyageWidgetState extends State<StepVoyageWidget> {
         ),
 
         // 안내 문구
-        Text('⛵ 오늘 걸은 걸음은 내일 아침 도착해요',
+        Text('⛵ 오늘 걸음은 내일 항해 거리에 더해져요',
             style: TextStyle(
                 fontSize: 11, color: Colors.white.withOpacity(0.35))),
       ],
