@@ -82,7 +82,8 @@ class AdventureProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> selectCharacter(int statId) async {
+  // 캐릭터 착용 — 성공하면 true
+  Future<bool> selectCharacter(int statId) async {
     try {
       final updated = await _repository.selectCharacter(statId);
       myCharacters = myCharacters.map((c) => CharacterStatModel(
@@ -94,9 +95,11 @@ class AdventureProvider extends ChangeNotifier {
       )).toList();
       activeCharacter = updated;
       notifyListeners();
+      return true;
     } catch (e) {
       error = e.toString();
       notifyListeners();
+      return false;
     }
   }
 

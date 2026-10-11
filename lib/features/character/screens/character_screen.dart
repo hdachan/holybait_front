@@ -110,11 +110,11 @@ class _CharacterScreenState extends State<CharacterScreen> {
   Future<void> _onSelectCharacter(int statId) async {
     final adventure = context.read<AdventureProvider>();
     if (adventure.activeCharacter?.statId == statId) return;
-    await adventure.selectCharacter(statId);
+    final ok = await adventure.selectCharacter(statId);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: const Text('캐릭터가 변경되었습니다.'),
-        backgroundColor: const Color(0xFF4CAF50),
+        content: Text(ok ? '캐릭터가 변경되었습니다.' : '캐릭터 변경에 실패했습니다. 잠시 후 다시 시도해주세요.'),
+        backgroundColor: ok ? const Color(0xFF4CAF50) : Colors.red,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),

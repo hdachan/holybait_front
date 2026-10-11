@@ -183,6 +183,10 @@ class _StepTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final step = context.watch<StepProvider>();
     final currency = context.watch<CurrencyProvider>();
+    // 하루 상한(운동 + 걸음 합산)에 걸리면 받을 수 있는 코인은 남은 한도까지만
+    final capped = currency.isCapped;
+    final claimable = step.claimableCoins.clamp(0, currency.remainingToday);
+    final canPress = claimable > 0 && !step.isLoading;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
@@ -211,7 +215,7 @@ class _StepTab extends StatelessWidget {
                     Row(children: [
                       const Text('👟', style: TextStyle(fontSize: 16)),
                       const SizedBox(width: 4),
-                      Text('${step.claimableCoins}개',
+                      Text('$claimable개',
                           style: const TextStyle(
                               fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF42A5F5))),
                     ]),
@@ -255,7 +259,7 @@ class _StepTab extends StatelessWidget {
             width: double.infinity,
             height: 52,
             child: ElevatedButton(
-              onPressed: step.canClaim && !step.isLoading
+              onPressed: canPress
                   ? () => _onClaim(context, step, currency)
                   : null,
               style: ElevatedButton.styleFrom(
@@ -270,9 +274,11 @@ class _StepTab extends StatelessWidget {
                   width: 22, height: 22,
                   child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                   : Text(
-                  step.canClaim
-                      ? '👟 신발코인 ${step.claimableCoins}개 받기'
-                      : '1,000보 이상 걸으면 받을 수 있어요',
+                  capped
+                      ? '오늘 최대치(${currency.dailyCap}개)를 모두 받았어요'
+                      : claimable > 0
+                          ? '👟 신발코인 $claimable개 받기'
+                          : '1,000보 이상 걸으면 받을 수 있어요',
                   style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
             ),
           ),
@@ -305,6 +311,17 @@ class _StepTab extends StatelessWidget {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('👟 신발코인 ${result.grantedCoins}개를 받았어요!'),
         backgroundColor: const Color(0xFF42A5F5),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        duration: const Duration(seconds: 2),
+      ));
+    } else if (result != null) {
+      // 서버가 거절 — 화면의 재화 정보가 늦게 갱신돼 상한을 모르고 누른 경우 등
+      currency.load();
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('오늘 받을 수 있는 신발코인(${result.dailyCap}개)을 모두 받았어요.'),
+        backgroundColor: const Color(0xFF616161),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
