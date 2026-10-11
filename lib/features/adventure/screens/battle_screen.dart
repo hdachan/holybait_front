@@ -252,7 +252,7 @@ class _BattleScreenState extends State<BattleScreen>
       context: context,
       barrierDismissible: false,
       builder: (_) => AlertDialog(
-        title: Text(result.isWin ? '🎉 승리!' : '💀 패배',
+        title: Text(result.isWin ? '🎉 승리!' : (_isTimeoutLose ? '⏱ 시간 초과' : '💀 패배'),
             style: TextStyle(
                 color: result.isWin ? Colors.amber : Colors.red,
                 fontWeight: FontWeight.bold)),
@@ -270,8 +270,11 @@ class _BattleScreenState extends State<BattleScreen>
                 _rewardRow('🎁 캐릭터 획득', result.droppedCharacterName!,
                     highlight: true),
             ] else
-              const Text('다음엔 더 강해져서 도전하세요!',
-                  style: TextStyle(color: Colors.grey)),
+              Text(
+                  _isTimeoutLose
+                      ? '50턴 안에 쓰러뜨리지 못했어요.\n공격력을 더 키워서 도전하세요!'
+                      : '다음엔 더 강해져서 도전하세요!',
+                  style: const TextStyle(color: Colors.grey)),
             const SizedBox(height: 12),
             const Divider(),
             Text('현재 Lv.${result.newLevel}',
@@ -499,11 +502,22 @@ class _BattleScreenState extends State<BattleScreen>
     );
   }
 
+  // 서버 턴 상한(50턴)에 걸려 패배 — 내 체력이 남아 있는데 패배인 경우
+  bool get _isTimeoutLose {
+    final logs = widget.battleResult.logs;
+    return widget.battleResult.result != 'WIN' &&
+        logs.isNotEmpty &&
+        logs.last.playerHpAfter > 0;
+  }
+
   String _battleMessage() {
     if (_currentLog == null) return '몬스터가 나타났다!\n어떻게 하시겠습니까?';
     if (_isFinished) {
-      return widget.battleResult.result == 'WIN'
-          ? '${widget.battleResult.monsterName}을 처치했습니다!\n보상을 받으세요.'
+      if (widget.battleResult.result == 'WIN') {
+        return '${widget.battleResult.monsterName}을 처치했습니다!\n보상을 받으세요.';
+      }
+      return _isTimeoutLose
+          ? '⏱ 시간 초과! 50턴 안에 쓰러뜨리지 못했어요.\n공격력을 더 키워서 도전하세요!'
           : '패배했습니다...\n다음엔 더 강해져서 도전하세요!';
     }
     final log = _currentLog!;
