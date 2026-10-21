@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../features/auth/provider/auth_provider.dart';
 import '../constants/api_constants.dart';
+import '../device/device_info.dart';
 import '../session/reset_user_data.dart';
 import '../error/app_exception.dart';
 import '../storage/secure_storage.dart';
@@ -213,7 +214,7 @@ class AuthInterceptor extends Interceptor {
 
         final response = await dio.post(
           ApiConstants.refresh,
-          data: {'refreshToken': refreshToken, 'deviceInfo': 'flutter_web'},
+          data: {'refreshToken': refreshToken, 'deviceInfo': deviceInfoLabel},
           options: Options(headers: {'Authorization': null}),
         );
 

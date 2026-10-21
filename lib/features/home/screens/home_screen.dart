@@ -32,6 +32,8 @@ class _HomeScreenState extends State<HomeScreen>
       final step = context.read<StepProvider>();
       final auth = context.read<AuthProvider>();
       step.onStepLogSaved = auth.refreshUser;
+      // 자정이 지나면 오늘 받은 코인(하루 20개 한도)을 새로 불러와 받기 버튼을 다시 살림
+      step.onDayChanged = context.read<CurrencyProvider>().load;
       step.init(owner: auth.user?.uuid ?? '');
       context.read<CurrencyProvider>().load();
     });

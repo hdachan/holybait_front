@@ -39,6 +39,9 @@ class StepProvider extends ChangeNotifier {
   // 걸음 기록이 서버에 저장됐을 때 호출 (누적 걸음 화면 갱신용)
   VoidCallback? onStepLogSaved;
 
+  // 앱을 켜둔 채 날짜가 바뀌었을 때 (오늘 받은 신발코인 등 화면 정보 새로고침용)
+  VoidCallback? onDayChanged;
+
   int get todaySteps => _todaySteps;
   bool get isLoading => _isLoading;
   bool get permissionDenied => _permissionDenied;
@@ -95,6 +98,7 @@ class StepProvider extends ChangeNotifier {
     _subscription?.cancel();
     _subscription = null;
     onStepLogSaved = null;
+    onDayChanged = null;
     _stepDate = '';
     _todaySteps = 0;
     _alreadyRewardedSteps = 0;
@@ -167,7 +171,10 @@ class StepProvider extends ChangeNotifier {
     _saveToday();
     notifyListeners();
 
-    if (dayChanged) _sendPendingLogs();
+    if (dayChanged) {
+      _sendPendingLogs();
+      onDayChanged?.call();
+    }
   }
 
   // 날짜가 바뀌었으면 지난 날 걸음을 전송 대기 목록에 넣고 오늘 값을 초기화

@@ -31,6 +31,14 @@ class _QuestSheetState extends State<_QuestSheet> {
     });
   }
 
+  // 선택한 탭에 맞는 시트 제목
+  String _titleFor(String type) => switch (type) {
+        'daily' => '일일 퀘스트',
+        'weekly' => '주간 퀘스트',
+        'achievement' => '업적',
+        _ => '초보자 퀘스트',
+      };
+
   void _switchTab(String type) {
     if (_selectedType == type) return;
     setState(() => _selectedType = type);
@@ -66,7 +74,7 @@ class _QuestSheetState extends State<_QuestSheet> {
               children: [
                 const Text('📜', style: TextStyle(fontSize: 22)),
                 const SizedBox(width: 8),
-                const Text('초보자 퀘스트',
+                Text(_titleFor(_selectedType),
                     style: TextStyle(
                         color: Colors.white,
                         fontSize: 18,

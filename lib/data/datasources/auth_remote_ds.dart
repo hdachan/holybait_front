@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import '../../core/network/api_client.dart';
 import '../../core/constants/api_constants.dart';
+import '../../core/device/device_info.dart';
 import '../models/auth_response.dart';
 import '../models/user_model.dart';
 
@@ -11,7 +12,7 @@ class AuthRemoteDataSource {
     final res = await _dio.post(ApiConstants.login, data: {
       'provider':   'GOOGLE',
       'idToken':    idToken,
-      'deviceInfo': 'flutter_web',
+      'deviceInfo': deviceInfoLabel,
     });
     return AuthResponse.fromJson(res.data);
   }
@@ -38,7 +39,7 @@ class AuthRemoteDataSource {
   Future<void> logout(String refreshToken) async {
     await _dio.post(ApiConstants.logout, data: {
       'refreshToken': refreshToken,
-      'deviceInfo':   'flutter_web',
+      'deviceInfo': deviceInfoLabel,
     });
   }
 
