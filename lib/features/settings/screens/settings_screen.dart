@@ -136,11 +136,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   label: '문의하기 / 버그 제보',
                   onTap: () => _openLink('https://example.com/contact'),
                 ),
-                _ActionTile(
-                  icon: Icons.feedback_outlined,
-                  label: '의견 보내기',
-                  onTap: () => _openLink('https://example.com/feedback'),
-                ),
               ]),
 
               // ── 앱 정보 ──
