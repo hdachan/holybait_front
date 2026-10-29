@@ -30,6 +30,8 @@ class AuthRepository {
       googleUser = await _googleSignIn.signInSilently();
       googleUser ??= await _googleSignIn.signIn();
     } else {
+      // 이전에 고른 구글 계정을 지워서 매번 계정 선택 창을 띄움 (다른 계정으로 바꿀 수 있게)
+      await _googleSignIn.signOut();
       googleUser = await _googleSignIn.signIn();
     }
 
