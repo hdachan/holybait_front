@@ -66,6 +66,14 @@ class RoutineProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // 선택한 운동 순서 바꾸기 (ReorderableListView의 onReorder 값 그대로)
+  void reorderSelected(int oldIndex, int newIndex) {
+    if (newIndex > oldIndex) newIndex--;
+    final item = _selectedExercises.removeAt(oldIndex);
+    _selectedExercises.insert(newIndex, item);
+    notifyListeners();
+  }
+
   // 선택 초기화
   void clearSelected() {
     _selectedExercises = [];

@@ -3,8 +3,7 @@ import '../../core/network/api_client.dart';
 import '../models/routine_model.dart';
 import '../models/exercise_model.dart';
 import '../models/workout_model.dart';
-import '../../features/routine/screens/workout_history_screen.dart';
-import '../../features/routine/screens/workout_history_detail_screen.dart';
+import '../models/workout_history_model.dart';
 class RoutineRemoteDataSource {
   final Dio _dio = ApiClient.dio;
 

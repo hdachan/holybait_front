@@ -7,7 +7,6 @@ import 'features/auth/screens/consent_screen.dart';
 import 'features/auth/screens/onboarding_screen.dart';
 import 'features/main/main_screen.dart';
 import 'features/routine/screens/routine_detail_screen.dart';
-import 'features/routine/screens/exercise_pick_screen.dart';
 import 'data/models/routine_model.dart';
 import 'main.dart' show navigatorKey;
 
@@ -25,16 +24,6 @@ final GoRouter router = GoRouter(
       builder: (context, state) {
         final routine = state.extra as RoutineModel;
         return RoutineDetailScreen(routine: routine);
-      },
-    ),
-    GoRoute(
-      path: '/exercise-pick',
-      builder: (context, state) {
-        final extra = state.extra as Map<String, dynamic>?;
-        return ExercisePickScreen(
-          alreadyAdded: extra?['alreadyAdded'] as Set<int>? ?? {},
-          onComplete: extra?['onComplete'] as void Function(List)?,
-        );
       },
     ),
   ],

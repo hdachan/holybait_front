@@ -29,9 +29,10 @@ class _CharacterScreenState extends State<CharacterScreen> {
       context.read<CurrencyProvider>().load();
       context.read<QuestProvider>().refreshAllBadges();
       await context.read<AdventureProvider>().loadStages();
+      if (!mounted) return;
       final characters = context.read<AdventureProvider>().myCharacters;
       final activeIndex = characters.indexWhere((c) => c.isActive);
-      if (activeIndex >= 0 && mounted) {
+      if (activeIndex >= 0) {
         setState(() => _currentPage = activeIndex);
       }
     });
@@ -151,6 +152,7 @@ class _CharacterScreenState extends State<CharacterScreen> {
               onPressed: () => Navigator.push(context,
                   MaterialPageRoute(builder: (_) => const ShopScreen()))
                   .then((_) {
+                if (!context.mounted) return;
                 context.read<CurrencyProvider>().load();
                 context.read<AdventureProvider>().loadStages();
               }),
@@ -673,83 +675,6 @@ class _EquipButtonState extends State<_EquipButton> {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-// ── 스프라이트 애니메이션 ──
-class _SpriteAnimation extends StatefulWidget {
-  final String spriteFolder;
-  final String spritePrefix;
-  final int totalFrames;
-  final Color color;
-  final double size;
-
-  const _SpriteAnimation({
-    required this.spriteFolder,
-    required this.spritePrefix,
-    required this.totalFrames,
-    required this.color,
-    required this.size,
-  });
-
-  @override
-  State<_SpriteAnimation> createState() => _SpriteAnimationState();
-}
-
-class _SpriteAnimationState extends State<_SpriteAnimation> {
-  int _frame = 0;
-  Timer? _timer;
-
-  void _play() {
-    _timer?.cancel();
-    setState(() => _frame = 0);
-    _timer = Timer.periodic(const Duration(milliseconds: 80), (_) {
-      if (!mounted) return;
-      setState(() {
-        _frame++;
-        if (_frame >= widget.totalFrames) {
-          _frame = 0;
-          _timer?.cancel();
-          _timer = null;
-        }
-      });
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final s = widget.size;
-    return GestureDetector(
-      onTap: _play,
-      child: SizedBox(
-        width: s,
-        height: s,
-        child: IndexedStack(
-          index: _frame,
-          children: List.generate(widget.totalFrames, (i) {
-            final frameNum = (i + 1).toString().padLeft(2, '0');
-            final path =
-                '${widget.spriteFolder}${widget.spritePrefix}_$frameNum-removebg-preview.png';
-            return Image.asset(
-              path,
-              width: s,
-              height: s,
-              fit: BoxFit.contain,
-              gaplessPlayback: true,
-              errorBuilder: (_, __, ___) => i == 0
-                  ? _CharacterPlaceholder(color: widget.color, size: s)
-                  : SizedBox(width: s, height: s),
-            );
-          }),
         ),
       ),
     );

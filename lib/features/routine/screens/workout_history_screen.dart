@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../data/repositories/routine_repository.dart';
+import '../../../data/models/workout_history_model.dart';
 import 'workout_history_detail_screen.dart';
 
 class WorkoutHistoryScreen extends StatefulWidget {
@@ -253,49 +254,4 @@ class _ExerciseCard extends StatelessWidget {
       ),
     );
   }
-}
-
-// ── 모델 ──
-class WorkoutSummaryModel {
-  final int thisWeekCount;
-  final int streakDays;
-  final int totalExercises;
-
-  WorkoutSummaryModel({
-    required this.thisWeekCount,
-    required this.streakDays,
-    required this.totalExercises,
-  });
-
-  factory WorkoutSummaryModel.fromJson(Map<String, dynamic> json) =>
-      WorkoutSummaryModel(
-        thisWeekCount: json['thisWeekCount'] ?? 0,
-        streakDays: json['streakDays'] ?? 0,
-        totalExercises: json['totalExercises'] ?? 0,
-      );
-}
-
-class WorkoutHistoryModel {
-  final int exerciseId;
-  final String exerciseName;
-  final String target;
-  final String lastLoggedDate;
-  final int totalSessions;
-
-  WorkoutHistoryModel({
-    required this.exerciseId,
-    required this.exerciseName,
-    required this.target,
-    required this.lastLoggedDate,
-    required this.totalSessions,
-  });
-
-  factory WorkoutHistoryModel.fromJson(Map<String, dynamic> json) =>
-      WorkoutHistoryModel(
-        exerciseId: json['exerciseId'],
-        exerciseName: json['exerciseName'],
-        target: json['target'] ?? '',
-        lastLoggedDate: json['lastLoggedDate'] ?? '',
-        totalSessions: json['totalSessions'] ?? 0,
-      );
 }

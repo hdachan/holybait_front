@@ -164,13 +164,7 @@ class _RoutineFormScreenState extends State<RoutineFormScreen> {
                 : ReorderableListView.builder(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               itemCount: provider.selectedExercises.length,
-              onReorder: (oldIndex, newIndex) {
-                if (newIndex > oldIndex) newIndex--;
-                final item =
-                provider.selectedExercises.removeAt(oldIndex);
-                provider.selectedExercises.insert(newIndex, item);
-                provider.notifyListeners();
-              },
+              onReorder: provider.reorderSelected,
               itemBuilder: (_, i) {
                 final ex = provider.selectedExercises[i];
                 return Container(

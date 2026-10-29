@@ -170,20 +170,6 @@ class BattleConfirmResult {
       );
 }
 
-// 미수령 배틀 응답 (맵 화면 진입 시)
-class PendingBattleModel {
-  final int battleId;
-  final String monsterName;
-
-  PendingBattleModel({required this.battleId, required this.monsterName});
-
-  factory PendingBattleModel.fromJson(Map<String, dynamic> json) =>
-      PendingBattleModel(
-        battleId: json['battleId'],
-        monsterName: json['monsterName'],
-      );
-}
-
 // 슬롯 확장 응답
 class SlotExpandModel {
   final int slotCount;      // 확장 후 슬롯 수

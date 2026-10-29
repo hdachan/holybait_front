@@ -100,6 +100,7 @@ class _HomeScreenState extends State<HomeScreen>
                 context,
                 MaterialPageRoute(builder: (_) => const RoutineFormScreen()),
               );
+              if (!context.mounted) return;
               context.read<RoutineProvider>().loadRoutines();
             },
             child: const Icon(Icons.add),
@@ -299,12 +300,6 @@ class _StepTab extends StatelessWidget {
     );
   }
 
-  String _formatSteps(int steps) {
-    if (steps >= 10000) return '${(steps / 10000).toStringAsFixed(1)}만';
-    return steps.toString().replaceAllMapped(
-        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
-  }
-
   Future<void> _onClaim(BuildContext context, StepProvider step, CurrencyProvider currency) async {
     final result = await step.claimReward();
     if (!context.mounted) return;
@@ -375,7 +370,7 @@ class _RoutineCard extends StatelessWidget {
               title: Text(routine.name,
                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.white)),
               subtitle: Text(
-                  routine.exerciseCount != null ? '${routine.exerciseCount}개의 운동' : '',
+                  '${routine.exerciseCount}개의 운동',
                   style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12)),
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -397,6 +392,7 @@ class _RoutineCard extends StatelessWidget {
                           context,
                           MaterialPageRoute(builder: (_) => RoutineFormScreen(routine: routine)),
                         );
+                        if (!context.mounted) return;
                         context.read<RoutineProvider>().loadRoutines();
                       } else if (value == 'delete') {
                         _showDeleteDialog(context);

@@ -67,12 +67,6 @@ class AuthRepository {
     await _googleSignIn.signOut();
   }
 
-  Future<void> logoutAll() async {
-    await _remote.logoutAll();
-    await _local.clearAll();
-    await _googleSignIn.signOut();
-  }
-
   Future<void> withdraw() async {
     await _remote.withdraw();
     await _local.clearAll();

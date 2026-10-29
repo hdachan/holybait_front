@@ -43,7 +43,5 @@ class AuthRemoteDataSource {
     });
   }
 
-  Future<void> logoutAll() async => await _dio.post(ApiConstants.logoutAll);
-
   Future<void> withdraw() async => await _dio.delete(ApiConstants.withdraw);
 }

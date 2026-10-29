@@ -187,6 +187,7 @@ class ShopScreen extends StatelessWidget {
       currency.load();
       // 캐릭터 목록 갱신
       await adventure.loadStages();
+      if (!context.mounted) return;
 
       // 결과 팝업
       showDialog(

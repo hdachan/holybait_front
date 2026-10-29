@@ -197,7 +197,7 @@ class _PlanetDetailScreenState extends State<PlanetDetailScreen> {
       ),
     );
 
-    if (confirm != true) return;
+    if (confirm != true || !mounted) return;
 
     final provider = context.read<AdventureProvider>();
     final result = await provider.startBattle(stage.id);
@@ -223,7 +223,7 @@ class _PlanetDetailScreenState extends State<PlanetDetailScreen> {
             builder: (_) => BattleScreen(battleResult: result)),
       ).then((_) {
         provider.loadStages();
-        context.read<CurrencyProvider>().load();
+        if (mounted) context.read<CurrencyProvider>().load();
       });
     }
   }

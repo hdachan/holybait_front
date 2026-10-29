@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../data/repositories/routine_repository.dart';
+import '../../../data/models/workout_history_model.dart';
 
 class WorkoutHistoryDetailScreen extends StatefulWidget {
   final int exerciseId;
@@ -194,50 +195,4 @@ class _SetRow extends StatelessWidget {
       ),
     );
   }
-}
-
-// 모델
-class WorkoutHistoryDetailModel {
-  final String loggedDate;
-  final int totalSets;
-  final List<SetDetailModel> sets;
-
-  WorkoutHistoryDetailModel({
-    required this.loggedDate,
-    required this.totalSets,
-    required this.sets,
-  });
-
-  factory WorkoutHistoryDetailModel.fromJson(Map<String, dynamic> json) =>
-      WorkoutHistoryDetailModel(
-        loggedDate: json['loggedDate'] ?? '',
-        totalSets: json['totalSets'] ?? 0,
-        sets: (json['sets'] as List? ?? [])
-            .map((s) => SetDetailModel.fromJson(s))
-            .toList(),
-      );
-}
-
-class SetDetailModel {
-  final int setNumber;
-  final double? weightKg;
-  final int? reps;
-  final bool isDropset;
-
-  SetDetailModel({
-    required this.setNumber,
-    this.weightKg,
-    this.reps,
-    required this.isDropset,
-  });
-
-  factory SetDetailModel.fromJson(Map<String, dynamic> json) =>
-      SetDetailModel(
-        setNumber: json['setNumber'] ?? 0,
-        weightKg: json['weightKg'] != null
-            ? double.tryParse(json['weightKg'].toString())
-            : null,
-        reps: json['reps'],
-        isDropset: json['isDropset'] ?? false,
-      );
 }

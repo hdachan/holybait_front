@@ -12,10 +12,4 @@ class PlanetRemoteDataSource {
         .map((e) => PlanetModel.fromJson(e))
         .toList();
   }
-
-  // 행성 상세
-  Future<PlanetModel> getPlanet(int planetId) async {
-    final res = await _dio.get('/planets/$planetId');
-    return PlanetModel.fromJson(res.data);
-  }
 }

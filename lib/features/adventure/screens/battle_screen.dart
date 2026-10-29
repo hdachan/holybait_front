@@ -568,7 +568,7 @@ class _BattleScreenState extends State<BattleScreen>
             ],
           ),
         );
-        if (leave == true && mounted) Navigator.pop(context);
+        if (leave == true && context.mounted) Navigator.pop(context);
       },
       child: Scaffold(
         backgroundColor: const Color(0xFF1A2A1A),
