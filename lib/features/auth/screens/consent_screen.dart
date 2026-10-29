@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../provider/auth_provider.dart';
 import '../../../core/widgets/app_background.dart';
+import '../../../core/constants/link_constants.dart';
 
 class ConsentScreen extends StatefulWidget {
   const ConsentScreen({super.key});
@@ -101,8 +102,7 @@ class _ConsentScreenState extends State<ConsentScreen> {
                   label: '[필수] 서비스 이용약관',
                   checked: _termsAgreed,
                   onChanged: (v) => setState(() => _termsAgreed = v),
-                  onDetail: () => _openUrl(
-                      'https://aquamarine-armchair-686.notion.site/HolyHabit-3a7d8a6d432180d5b335f42bafa9b543'),
+                  onDetail: () => _openUrl(LinkConstants.terms),
                 ),
                 const SizedBox(height: 16),
 
@@ -111,8 +111,7 @@ class _ConsentScreenState extends State<ConsentScreen> {
                   label: '[필수] 개인정보 처리방침',
                   checked: _privacyAgreed,
                   onChanged: (v) => setState(() => _privacyAgreed = v),
-                  onDetail: () => _openUrl(
-                      'https://aquamarine-armchair-686.notion.site/HolyHabit-3a7d8a6d4321801dbb54d54e902323a3'),
+                  onDetail: () => _openUrl(LinkConstants.privacyPolicy),
                 ),
                 const SizedBox(height: 16),
 
@@ -121,8 +120,7 @@ class _ConsentScreenState extends State<ConsentScreen> {
                   label: '[선택] 마케팅 정보 수신',
                   checked: _marketingAgreed,
                   onChanged: (v) => setState(() => _marketingAgreed = v),
-                  onDetail: () => _openUrl(
-                      'https://aquamarine-armchair-686.notion.site/HolyHabit-3a7d8a6d432180c085a8dfde536e3295'),
+                  onDetail: () => _openUrl(LinkConstants.marketing),
                 ),
 
                 const Spacer(),

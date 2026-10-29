@@ -6,6 +6,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import '../../auth/provider/auth_provider.dart';
 import '../../step/step_provider.dart';
 import '../../../core/session/reset_user_data.dart';
+import '../../../core/constants/link_constants.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -114,12 +115,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _ActionTile(
                   icon: Icons.privacy_tip_outlined,
                   label: '개인정보 처리방침',
-                  onTap: () => _openLink('https://aquamarine-armchair-686.notion.site/HolyHabit-3a7d8a6d4321801dbb54d54e902323a3'),
+                  onTap: () => _openLink(LinkConstants.privacyPolicy),
                 ),
                 _ActionTile(
                   icon: Icons.description_outlined,
                   label: '이용약관',
-                  onTap: () => _openLink('https://aquamarine-armchair-686.notion.site/HolyHabit-3a7d8a6d432180d5b335f42bafa9b543'),
+                  onTap: () => _openLink(LinkConstants.terms),
                 ),
               ]),
 
@@ -127,14 +128,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _SectionHeader(title: '고객 지원'),
               _Card(children: [
                 _ActionTile(
-                  icon: Icons.help_outline,
-                  label: 'FAQ',
-                  onTap: () => _openLink('https://example.com/faq'),
-                ),
-                _ActionTile(
                   icon: Icons.bug_report_outlined,
                   label: '문의하기 / 버그 제보',
-                  onTap: () => _openLink('https://example.com/contact'),
+                  onTap: () => _openLink(LinkConstants.contact),
                 ),
               ]),
 
