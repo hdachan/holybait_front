@@ -6,6 +6,8 @@ import '../settings/screens/settings_screen.dart';
 import '../planet/screens/planet_screen.dart';
 import '../adventure/widgets/pending_battle_dialog.dart';
 import 'provider/main_provider.dart';
+import '../auth/provider/auth_provider.dart';
+import '../../core/push/push_service.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -29,6 +31,9 @@ class _MainScreenState extends State<MainScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) checkPendingBattleAndPrompt(context);
     });
+    // 푸시 알림: 권한 요청 + 공지·이벤트 토픽 맞추기
+    PushService.onLoggedIn(
+        marketingAgreed: context.read<AuthProvider>().marketingAgreed);
   }
 
   @override

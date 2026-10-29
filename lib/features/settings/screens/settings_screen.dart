@@ -7,6 +7,7 @@ import '../../auth/provider/auth_provider.dart';
 import '../../step/step_provider.dart';
 import '../../../core/session/reset_user_data.dart';
 import '../../../core/constants/link_constants.dart';
+import '../../../core/push/push_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -23,6 +24,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void initState() {
     super.initState();
     _loadAppVersion();
+    _loadNotificationEnabled();
+  }
+
+  Future<void> _loadNotificationEnabled() async {
+    final enabled = await PushService.isEnabled();
+    if (mounted) setState(() => _notificationEnabled = enabled);
   }
 
   Future<void> _loadAppVersion() async {
@@ -97,7 +104,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   icon: Icons.notifications_outlined,
                   label: '알림 받기',
                   value: _notificationEnabled,
-                  onChanged: (v) => setState(() => _notificationEnabled = v),
+                  onChanged: (v) {
+                    setState(() => _notificationEnabled = v);
+                    PushService.setEnabled(v, marketingAgreed: marketingAgreed);
+                  },
                 ),
                 _SwitchTile(
                   icon: Icons.campaign_outlined,
@@ -105,6 +115,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   value: marketingAgreed,
                   onChanged: (v) async {
                     await auth.updateMarketingConsent(v);
+                    // 이벤트 알림은 마케팅 동의한 사람만 받음
+                    PushService.syncTopics(marketingAgreed: auth.marketingAgreed);
                   },
                 ),
               ]),

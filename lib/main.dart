@@ -9,6 +9,7 @@ import 'features/step/step_provider.dart';
 import 'features/planet/provider/planet_provider.dart';
 import 'features/quest/provider/quest_provider.dart';
 import 'router.dart';
+import 'core/push/push_service.dart';
 
 // 전역 navigatorKey (auth_interceptor에서 팝업 띄울 때 사용)
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -16,7 +17,9 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 // 전역 안내(스낵바)용 — 인터넷 연결 안내 등 화면과 관계없이 띄울 때
 final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await PushService.init();
   runApp(const HolyHabitApp());
 }
 

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "150618665063",
+    "project_id": "holyhabit915",
+    "storage_bucket": "holyhabit915.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:150618665063:android:3073122db9068dadec64c2",
+        "android_client_info": {
+          "package_name": "com.holyhabit.holyhabit"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAaK4KpJEpqkWaEvTbDAUCAD78Rbh0Xz0k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
