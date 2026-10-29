@@ -35,6 +35,7 @@ class CharacterStatModel {
   final int def;
   final int hp;
   final int maxHp;
+  final double? doubleAttackChance; // 더블어택 확률 (0.1 = 10%), 예전 서버면 null
 
   CharacterStatModel({
     required this.statId, required this.characterId,
@@ -43,6 +44,7 @@ class CharacterStatModel {
     required this.exp, required this.requiredExp,
     required this.atk, required this.def,
     required this.hp, required this.maxHp,
+    this.doubleAttackChance,
   });
 
   double get expProgress => (exp / requiredExp).clamp(0.0, 1.0);
@@ -61,6 +63,7 @@ class CharacterStatModel {
         def: json['def'],
         hp: json['hp'],
         maxHp: json['maxHp'],
+        doubleAttackChance: (json['doubleAttackChance'] as num?)?.toDouble(),
       );
 }
 
@@ -200,5 +203,19 @@ class SlotExpandModel {
         slotCount: json['slotCount'] ?? 4,
         remainingGold: json['remainingGold'] ?? 0,
         nextSlotCost: json['nextSlotCost'] ?? -1,
+      );
+}
+
+// 가격 정보 (GET /shop/prices) — 서버 가격이 바뀌면 앱 업데이트 없이 반영
+class ShopPricesModel {
+  final int gachaCost;        // 뽑기 1회 비용
+  final List<int> slotCosts;  // 슬롯 확장 가격표 (인덱스 = 현재 슬롯 수)
+
+  ShopPricesModel({required this.gachaCost, required this.slotCosts});
+
+  factory ShopPricesModel.fromJson(Map<String, dynamic> json) =>
+      ShopPricesModel(
+        gachaCost: json['gachaCost'],
+        slotCosts: (json['slotCosts'] as List).map((e) => e as int).toList(),
       );
 }

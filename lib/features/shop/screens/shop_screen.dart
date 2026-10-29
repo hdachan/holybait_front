@@ -8,11 +8,10 @@ import '../../adventure/provider/adventure_provider.dart';
 class ShopScreen extends StatelessWidget {
   const ShopScreen({super.key});
 
-  static const int gachaCost = 1400;
-
   @override
   Widget build(BuildContext context) {
     final currency = context.watch<CurrencyProvider>();
+    final gachaCost = context.watch<AdventureProvider>().gachaCost;
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -130,7 +129,7 @@ class ShopScreen extends StatelessWidget {
     final adventure = context.read<AdventureProvider>();
 
     // 골드 부족 체크
-    if (currency.gold < gachaCost) {
+    if (currency.gold < adventure.gachaCost) {
       showDialog(
         context: context,
         builder: (_) => AlertDialog(

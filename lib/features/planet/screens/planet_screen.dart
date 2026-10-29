@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
@@ -7,6 +6,7 @@ import '../../../data/models/planet_model.dart';
 import 'planet_detail_screen.dart';
 import '../../currency/provider/currency_provider.dart';
 import '../../../core/widgets/currency_badge.dart';
+import '../../../core/widgets/visible_frame_timer.dart';
 
 class PlanetScreen extends StatefulWidget {
   const PlanetScreen({super.key});
@@ -215,51 +215,35 @@ class _PlanetAnimation extends StatefulWidget {
   State<_PlanetAnimation> createState() => _PlanetAnimationState();
 }
 
-class _PlanetAnimationState extends State<_PlanetAnimation> {
+class _PlanetAnimationState extends State<_PlanetAnimation>
+    with VisibleFrameTimer {
   static const _totalFrames = 13;
-  static const _frameDuration = Duration(milliseconds: 150);
 
   int _frame = 1;
   bool _ascending = true;
-  Timer? _timer;
 
   @override
-  void initState() {
-    super.initState();
-    if (widget.isActive) _startTimer();
-  }
+  Duration get frameDuration => const Duration(milliseconds: 150);
+
+  // 가운데 행성만 움직임
+  @override
+  bool get wantsFrames => widget.isActive;
 
   @override
   void didUpdateWidget(_PlanetAnimation oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.isActive && !oldWidget.isActive) {
-      _startTimer();
-    } else if (!widget.isActive && oldWidget.isActive) {
-      _timer?.cancel();
-      _timer = null;
-    }
-  }
-
-  void _startTimer() {
-    _timer?.cancel();
-    _timer = Timer.periodic(_frameDuration, (_) {
-      if (!mounted) return;
-      setState(() {
-        if (_ascending) {
-          _frame++;
-          if (_frame >= _totalFrames) _ascending = false;
-        } else {
-          _frame--;
-          if (_frame <= 1) _ascending = true;
-        }
-      });
-    });
+    if (widget.isActive != oldWidget.isActive) updateFrameTimer();
   }
 
   @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
+  void onFrame() {
+    if (_ascending) {
+      _frame++;
+      if (_frame >= _totalFrames) _ascending = false;
+    } else {
+      _frame--;
+      if (_frame <= 1) _ascending = true;
+    }
   }
 
   @override

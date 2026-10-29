@@ -14,6 +14,14 @@ class AdventureProvider extends ChangeNotifier {
   BattleConfirmResult? confirmResult;
   int slotCount = 4; // 기본 슬롯 수
 
+  // 가격 — 서버(GET /shop/prices) 값으로 덮어씀. 불러오기 실패 시 아래 기본값 사용
+  int gachaCost = 1400;
+  List<int> slotCosts = const [0, 0, 0, 0, 500, 1000, 1500, 2500, 3500, 5000];
+
+  // 다음 슬롯 확장 비용 (-1이면 최대)
+  int get nextSlotCost =>
+      slotCount < slotCosts.length ? slotCosts[slotCount] : -1;
+
   bool isLoading = false;
   bool isCheckingPending = false;
   String? error;
@@ -53,6 +61,17 @@ class AdventureProvider extends ChangeNotifier {
       isLoading = false;
       notifyListeners();
     }
+    await _loadPrices();
+  }
+
+  // 가격은 실패해도 화면은 그대로 (기본값 사용)
+  Future<void> _loadPrices() async {
+    try {
+      final prices = await _repository.getPrices();
+      gachaCost = prices.gachaCost;
+      slotCosts = prices.slotCosts;
+      notifyListeners();
+    } catch (_) {}
   }
 
   // 미수령 배틀 체크

@@ -36,9 +36,13 @@ class _MainScreenState extends State<MainScreen> {
     final main = context.watch<MainProvider>();
     return Scaffold(
       backgroundColor: const Color(0xFF0e0a1a),
+      // 안 보이는 탭도 살아 있으므로, 지금 보는 탭만 애니메이션을 켬 (배터리 절약)
       body: IndexedStack(
         index: main.currentIndex,
-        children: _screens,
+        children: [
+          for (var i = 0; i < _screens.length; i++)
+            TickerMode(enabled: i == main.currentIndex, child: _screens[i]),
+        ],
       ),
       bottomNavigationBar: _BottomBar(
         currentIndex: main.currentIndex,

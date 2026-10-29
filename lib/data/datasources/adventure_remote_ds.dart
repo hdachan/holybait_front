@@ -28,6 +28,12 @@ class AdventureRemoteDataSource {
     return CharacterStatModel.fromJson(res.data);
   }
 
+  // 가격 정보 조회 (뽑기·슬롯 확장)
+  Future<ShopPricesModel> getPrices() async {
+    final res = await _dio.get('/shop/prices');
+    return ShopPricesModel.fromJson(res.data);
+  }
+
   // 슬롯 수 조회
   Future<int> getSlotCount() async {
     final res = await _dio.get('/adventures/slots');

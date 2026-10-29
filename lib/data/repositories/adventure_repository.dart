@@ -12,6 +12,7 @@ class AdventureRepository {
   Future<CharacterStatModel> selectCharacter(int statId) =>
       _remote.selectCharacter(statId);
   Future<int> getSlotCount() => _remote.getSlotCount();
+  Future<ShopPricesModel> getPrices() => _remote.getPrices();
   Future<SlotExpandModel> expandSlot() => _remote.expandSlot();
   Future<BattleStartResult?> getPendingBattle() =>
       _remote.getPendingBattle();

@@ -8,6 +8,7 @@ import '../../../data/models/adventure_model.dart';
 import '../../../core/network/api_client.dart';
 import '../../shop/screens/shop_screen.dart';
 import '../../../core/widgets/currency_badge.dart';
+import '../../../core/widgets/visible_frame_timer.dart';
 import '../../quest/screens/quest_sheet.dart';
 import '../../quest/provider/quest_provider.dart';
 
@@ -392,36 +393,25 @@ class _BackgroundAnimation extends StatefulWidget {
   State<_BackgroundAnimation> createState() => _BackgroundAnimationState();
 }
 
-class _BackgroundAnimationState extends State<_BackgroundAnimation> {
-  static const _totalFrames = 12;
-  static const _frameDuration = Duration(milliseconds: 182);
+class _BackgroundAnimationState extends State<_BackgroundAnimation>
+    with VisibleFrameTimer {
   static const _basePath = 'assets/images/ui/Characte_background/BG_Burrow_Character_';
 
   int _frame = 2;
   bool _ascending = true;
-  Timer? _timer;
 
   @override
-  void initState() {
-    super.initState();
-    _timer = Timer.periodic(_frameDuration, (_) {
-      if (!mounted) return;
-      setState(() {
-        if (_ascending) {
-          _frame++;
-          if (_frame >= 13) _ascending = false;
-        } else {
-          _frame--;
-          if (_frame <= 2) _ascending = true;
-        }
-      });
-    });
-  }
+  Duration get frameDuration => const Duration(milliseconds: 182);
 
   @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
+  void onFrame() {
+    if (_ascending) {
+      _frame++;
+      if (_frame >= 13) _ascending = false;
+    } else {
+      _frame--;
+      if (_frame <= 2) _ascending = true;
+    }
   }
 
   @override
@@ -500,7 +490,9 @@ class _StatsPanel extends StatelessWidget {
                     fallbackIcon: Icons.flash_on,
                     iconColor: const Color(0xFFFFA000),
                     tooltip: '더블어택',
-                    value: '40%',
+                    value: stat.doubleAttackChance == null
+                        ? '-'
+                        : '${(stat.doubleAttackChance! * 100).round()}%',
                     paddingLeft: 20,
                     paddingRight: 0,
                   ),
@@ -993,8 +985,7 @@ class _BottomSlots extends StatelessWidget {
 
   void _showExpandDialog(BuildContext context, AdventureProvider adventure) {
     final currentSlot = adventure.slotCount;
-    final costs = [0, 0, 0, 0, 500, 1000, 1500, 2500, 3500, 5000];
-    final cost = currentSlot < 10 ? costs[currentSlot] : -1;
+    final cost = adventure.nextSlotCost;
 
     if (cost == -1) {
       ScaffoldMessenger.of(context)
