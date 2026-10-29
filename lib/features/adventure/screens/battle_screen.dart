@@ -554,7 +554,7 @@ class _BattleScreenState extends State<BattleScreen>
           builder: (_) => AlertDialog(
             title: const Text('모험 중단'),
             content: const Text(
-                '지금 나가면 보상을 받을 수 없습니다.\n행성에 다시 들어오면 이어서 볼 수 있습니다.\n나가시겠습니까?'),
+                '지금 나가면 이 모험은 끝나고\n보상을 받을 수 없습니다.\n나가시겠습니까?'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context, false),
@@ -568,7 +568,13 @@ class _BattleScreenState extends State<BattleScreen>
             ],
           ),
         );
-        if (leave == true && context.mounted) Navigator.pop(context);
+        if (leave != true || !context.mounted) return;
+        // 직접 나가면 서버에서 배틀 포기 처리 (튕긴 경우만 다음에 이어서 하기)
+        // 전송이 실패하면 배틀이 남아 다음 행성 진입 때 "이전 배틀" 팝업으로 처리됨
+        context
+            .read<AdventureProvider>()
+            .abandonBattle(widget.battleResult.battleId);
+        Navigator.pop(context);
       },
       child: Scaffold(
         backgroundColor: const Color(0xFF1A2A1A),
