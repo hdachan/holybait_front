@@ -62,9 +62,29 @@ flutter:
     - assets/images/characters/knight/
     - assets/images/characters/holy/
     - assets/images/monsters/
-    - assets/images/monsters/monster_gorilla/
-    - assets/images/monsters/monster_black/
-    - assets/images/monsters/monster_Shadow_black/
+    # 새 몬스터 (frame-lab에서 내보냄)
+    - assets/images/monsters/monster_pink_snake/
+    - assets/images/monsters/monster_leaf/
+    - assets/images/monsters/monster_flame_ghost/
+    - assets/images/monsters/monster_blue_flame/
+    - assets/images/monsters/monster_witch_hat/
+    - assets/images/monsters/monster_flame_black/
+    - assets/images/monsters/monster_black_blob/
+    - assets/images/monsters/monster_fire_blob/
+    # 배틀 이펙트 (frame-lab에서 내보냄)
+    - assets/images/effects/fire_slash/
+    - assets/images/effects/cross_slash/
+    - assets/images/effects/impact/
+    - assets/images/effects/lightning/
+    - assets/images/effects/star_pop/
+    - assets/images/effects/magic_burst/
+    - assets/images/effects/claw/
+    - assets/images/effects/bite/
+    - assets/images/effects/crack/
+    - assets/images/effects/fire_breath/
+    - assets/images/effects/slam/
+    - assets/images/effects/poison/
+    - assets/battle/
     - assets/images/characters/dragon/
     - assets/images/space/
     - assets/images/ui/

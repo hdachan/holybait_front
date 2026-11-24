@@ -1,13 +1,19 @@
 import 'dart:async';
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../battle_anim/battle_anim_config.dart';
+import '../battle_anim/battle_anim_player.dart';
 import '../provider/adventure_provider.dart';
 import '../../../data/models/adventure_model.dart';
 import '../../currency/provider/currency_provider.dart';
 
 class BattleScreen extends StatefulWidget {
   final BattleStartResult battleResult;
-  const BattleScreen({super.key, required this.battleResult});
+  /// 개발용 모의 배틀: 서버에 포기·보상 요청을 보내지 않음
+  final bool isPreview;
+  const BattleScreen({super.key, required this.battleResult, this.isPreview = false});
 
   @override
   State<BattleScreen> createState() => _BattleScreenState();
@@ -16,61 +22,35 @@ class BattleScreen extends StatefulWidget {
 class _BattleScreenState extends State<BattleScreen>
     with TickerProviderStateMixin {
 
+  // 내 공격 이펙트 (4단계에서 유저가 장착한 이펙트로 바뀜)
+  static const _playerEffectKey = 'fire_slash'; // 불꽃 베기
+  // 몬스터 공격 이펙트: 서버가 준 몬스터별 값, 없거나 모르는 이름이면 발톱 3줄
+  static const _defaultMonsterEffectKey = 'claw';
+  static const _background = Color(0xFF1A2A1A);
+
   late int _playerHp;
   late int _monsterHp;
   int _currentLogIndex = -1;
   bool _isFinished = false;
   bool _isConfirming = false;
-  bool _monsterIsAttacking = false;
-
-  late AnimationController _monsterShakeCtrl;
-  late Animation<double> _monsterShakeAnim;
-  late AnimationController _playerShakeCtrl;
-  late Animation<double> _playerShakeAnim;
-  late AnimationController _monsterFlashCtrl;
-  late AnimationController _playerFlashCtrl;
-  late AnimationController _monsterJumpCtrl;
-  late Animation<double> _monsterJumpAnim;
-
-  // 몬스터 사망 시 서서히 사라지는 애니메이션
-  late AnimationController _monsterDeathCtrl;
-
-  // 공격 이펙트 (플레이어 공격 / 몬스터 공격 각각 별도)
-  late AnimationController _playerAttackEffectCtrl;
-  late AnimationController _monsterAttackEffectCtrl;
-  bool _showPlayerEffect = false;
-  bool _showMonsterEffect = false;
-
-  int? _lastDamage;
-  bool _isDoubleAttack = false;
-  bool _isDamageToPlayer = false;
-  int _damageKey = 0;
   TurnLog? _currentLog;
 
-  static const int _monsterTotalFrames = 12; // 프레임 수
-  static const int _frameMs = 80;            // 프레임 속도 (ms)
+  // 내가 맞을 때 내 HP 칸 흔들림·번쩍임
+  late AnimationController _playerShakeCtrl;
+  late Animation<double> _playerShakeAnim;
+  late AnimationController _playerFlashCtrl;
 
-  // 몬스터별 스프라이트 폴더 (imageKey 기반, 없으면 기본값)
-  String get _monsterSpriteFolder {
-    final key = widget.battleResult.monsterImageKey ?? 'monster1';
-    return 'assets/images/monsters/$key/';
-  }
+  // 배틀 연출 (frame-lab 설정 그대로 재생)
+  final _anim = BattleAnimController();
+  BattleAnimConfig? _animConfig;
+  Map<String, List<ui.Image>>? _animFrames;
+  bool _animLoading = true;
 
   @override
   void initState() {
     super.initState();
     _playerHp = widget.battleResult.playerMaxHp;
     _monsterHp = widget.battleResult.monsterHp;
-
-    _monsterShakeCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 350));
-    _monsterShakeAnim = TweenSequence([
-      TweenSequenceItem(tween: Tween(begin: 0.0, end: -10.0), weight: 20),
-      TweenSequenceItem(tween: Tween(begin: -10.0, end: 10.0), weight: 40),
-      TweenSequenceItem(tween: Tween(begin: 10.0, end: -6.0), weight: 20),
-      TweenSequenceItem(tween: Tween(begin: -6.0, end: 0.0), weight: 20),
-    ]).animate(CurvedAnimation(
-        parent: _monsterShakeCtrl, curve: Curves.easeInOut));
 
     _playerShakeCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 350));
@@ -82,51 +62,50 @@ class _BattleScreenState extends State<BattleScreen>
     ]).animate(CurvedAnimation(
         parent: _playerShakeCtrl, curve: Curves.easeInOut));
 
-    _monsterFlashCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 200));
     _playerFlashCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 200));
 
-    _monsterJumpCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 300));
-    _monsterJumpAnim = TweenSequence([
-      TweenSequenceItem(tween: Tween(begin: 0.0, end: -18.0), weight: 50),
-      TweenSequenceItem(tween: Tween(begin: -18.0, end: 0.0), weight: 50),
-    ]).animate(CurvedAnimation(
-        parent: _monsterJumpCtrl, curve: Curves.easeInOut));
-
-    _monsterDeathCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 900));
-
-    _playerAttackEffectCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 400));
-    _monsterAttackEffectCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 400));
-
-    // 스프라이트 미리 캐시 후 배틀 시작
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      for (int i = 1; i <= _monsterTotalFrames; i++) {
-        final frameNum = i.toString().padLeft(2, '0');
-        precacheImage(
-          AssetImage(
-              '${_monsterSpriteFolder}frame_$frameNum-removebg-preview.png'),
-          context,
-        );
-      }
-      Future.delayed(const Duration(milliseconds: 700), _playNext);
+    // 그림을 모두 읽은 뒤 배틀 시작
+    _loadAnim().then((_) {
+      if (mounted) Future.delayed(const Duration(milliseconds: 700), _playNext);
     });
+  }
+
+  Future<void> _loadAnim() async {
+    try {
+      final config = await BattleAnimConfig.load();
+      final monster = config.resolveMonster(widget.battleResult.monsterImageKey);
+      final slash = config.effect(_playerEffectKey);
+      final claw = config.clawEffect(widget.battleResult.monsterAttackEffect) ??
+          config.effect(_defaultMonsterEffectKey);
+      Future<List<ui.Image>> effect(BattleAnimAsset? e) => e == null
+          ? Future.value(<ui.Image>[])
+          : BattleAnimImages.loadAll(BattleAnimAsset.effectPaths(e.key, e.frames));
+      final frames = await Future.wait([
+        monster == null
+            ? Future.value(<ui.Image>[])
+            : BattleAnimImages.loadAll(
+                BattleAnimAsset.monsterPaths(monster.key, frames: monster.frames)),
+        effect(slash),
+        effect(claw),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        _animConfig = config;
+        _animFrames = {'monster': frames[0], 'slash': frames[1], 'claw': frames[2]};
+        _animLoading = false;
+      });
+    } catch (_) {
+      // 설정을 못 읽으면 연출 없이 진행 (몬스터는 👾로 표시)
+      if (mounted) setState(() => _animLoading = false);
+    }
   }
 
   @override
   void dispose() {
-    _monsterShakeCtrl.dispose();
+    _anim.dispose();
     _playerShakeCtrl.dispose();
-    _monsterFlashCtrl.dispose();
     _playerFlashCtrl.dispose();
-    _monsterJumpCtrl.dispose();
-    _playerAttackEffectCtrl.dispose();
-    _monsterAttackEffectCtrl.dispose();
-    _monsterDeathCtrl.dispose();
     super.dispose();
   }
 
@@ -144,76 +123,49 @@ class _BattleScreenState extends State<BattleScreen>
     setState(() {
       _currentLogIndex = nextIndex;
       _currentLog = log;
-      _lastDamage = log.damage;
-      _isDoubleAttack = log.isDoubleAttack;
-      _isDamageToPlayer = !log.isPlayer;
-      _damageKey++;
     });
 
-    if (log.isPlayer) {
-      // 플레이어 공격 이펙트 (몬스터 위치에 표시)
-      setState(() => _showPlayerEffect = true);
-      _playerAttackEffectCtrl.forward(from: 0).then((_) {
-        if (mounted) setState(() => _showPlayerEffect = false);
-      });
+    // 내 공격 = 'player' 장면, 몬스터 공격 = 'monster' 장면 (1인칭)
+    final viewName = log.isPlayer ? 'player' : 'monster';
+    final damageText =
+        log.isDoubleAttack ? 'x2 -${log.damage}' : '-${log.damage}';
+    final config = _animConfig;
+    final played = config != null
+        ? _anim.play(viewName, damageText: damageText)
+        : Future<void>.delayed(const Duration(milliseconds: 900));
 
-      _monsterShakeCtrl.forward(from: 0);
-      _monsterFlashCtrl.forward(from: 0).then((_) {
-        if (mounted) _monsterFlashCtrl.reverse();
-      });
-
-      // 맞는 순간 바로 HP 반영
-      setState(() {
-        _playerHp = log.playerHpAfter;
-        _monsterHp = log.monsterHpAfter;
-      });
-
-      // 몬스터 HP 0 → 흔들림 끝난 뒤 서서히 사라짐
-      if (log.monsterHpAfter <= 0) {
-        Future.delayed(const Duration(milliseconds: 300), () {
-          if (mounted) _monsterDeathCtrl.forward(from: 0);
-        });
-      }
-    } else {
-      setState(() => _monsterIsAttacking = true);
-      _monsterJumpCtrl.forward(from: 0);
-      await Future.delayed(const Duration(milliseconds: 150));
-
-      // 몬스터 공격 이펙트 (플레이어 위치에 표시)
-      setState(() => _showMonsterEffect = true);
-      _monsterAttackEffectCtrl.forward(from: 0).then((_) {
-        if (mounted) setState(() => _showMonsterEffect = false);
-      });
-
+    // 데미지 숫자가 뜨는 순간에 HP 반영
+    final hitMs =
+        config?.views[viewName]?.damage?.timed.startMs.round() ?? 200;
+    await Future.delayed(Duration(milliseconds: hitMs));
+    if (!mounted) return;
+    setState(() {
+      _playerHp = log.playerHpAfter;
+      _monsterHp = log.monsterHpAfter;
+    });
+    if (!log.isPlayer) {
       _playerShakeCtrl.forward(from: 0);
       _playerFlashCtrl.forward(from: 0).then((_) {
         if (mounted) _playerFlashCtrl.reverse();
       });
-
-      // 맞는 순간 바로 HP 반영
-      setState(() {
-        _playerHp = log.playerHpAfter;
-        _monsterHp = log.monsterHpAfter;
-      });
-
-      // 프레임 수 * 속도만큼 정확히 대기
-      await Future.delayed(
-          Duration(milliseconds: _frameMs * _monsterTotalFrames));
-      if (mounted) setState(() => _monsterIsAttacking = false);
     }
 
-    // 몬스터가 쓰러졌으면 사라지는 연출을 기다렸다가 결과로
+    // 몬스터 HP 0 → 서서히 사라짐
     final monsterDead = log.isPlayer && log.monsterHpAfter <= 0;
-    await Future.delayed(
-        Duration(milliseconds: monsterDead ? 1300 : 900));
-    if (mounted) {
-      setState(() => _lastDamage = null);
-      await Future.delayed(const Duration(milliseconds: 100));
-      if (mounted) _playNext();
-    }
+    if (monsterDead) _anim.die();
+
+    await played;
+    if (!mounted) return;
+    // 쓰러졌으면 사라지는 연출을 기다렸다가 결과로
+    await Future.delayed(Duration(milliseconds: monsterDead ? 500 : 250));
+    if (mounted) _playNext();
   }
 
   Future<void> _confirm() async {
+    if (widget.isPreview) {
+      Navigator.pop(context);
+      return;
+    }
     setState(() => _isConfirming = true);
     final provider = context.read<AdventureProvider>();
     final result = await provider.confirmRewards();
@@ -569,6 +521,10 @@ class _BattleScreenState extends State<BattleScreen>
           ),
         );
         if (leave != true || !context.mounted) return;
+        if (widget.isPreview) {
+          Navigator.pop(context);
+          return;
+        }
         // 직접 나가면 서버에서 배틀 포기 처리 (튕긴 경우만 다음에 이어서 하기)
         // 전송이 실패하면 배틀이 남아 다음 행성 진입 때 "이전 배틀" 팝업으로 처리됨
         context
@@ -577,21 +533,35 @@ class _BattleScreenState extends State<BattleScreen>
         Navigator.pop(context);
       },
       child: Scaffold(
-        backgroundColor: const Color(0xFF1A2A1A),
-        body: SafeArea(
-          child: Column(
-            children: [
-              // HP 바
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Stack(
-                        alignment: Alignment.center,
-                        clipBehavior: Clip.none,
-                        children: [
-                          AnimatedBuilder(
+        backgroundColor: _background,
+        body: Stack(
+          children: [
+            // 배틀 연출 (화면 전체, 몬스터는 가운데)
+            Positioned.fill(
+              child: _animConfig != null && _animFrames != null
+                  ? BattleAnimStage(
+                      config: _animConfig!,
+                      view: _animConfig!.views[BattleAnimController.idleView]!,
+                      frames: _animFrames!,
+                      controller: _anim,
+                      background: _background,
+                    )
+                  : Center(
+                      child: _animLoading
+                          ? const CircularProgressIndicator()
+                          : const Text('👾', style: TextStyle(fontSize: 90)),
+                    ),
+            ),
+            SafeArea(
+              child: Column(
+                children: [
+                  // HP 바
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: AnimatedBuilder(
                             animation: _playerShakeAnim,
                             builder: (_, child) => Transform.translate(
                               offset: Offset(_playerShakeAnim.value, 0),
@@ -599,8 +569,8 @@ class _BattleScreenState extends State<BattleScreen>
                                 animation: _playerFlashCtrl,
                                 builder: (_, child) => ColorFiltered(
                                   colorFilter: ColorFilter.mode(
-                                    Colors.white.withOpacity(
-                                        _playerFlashCtrl.value * 0.4),
+                                    Colors.white.withValues(
+                                        alpha: _playerFlashCtrl.value * 0.4),
                                     BlendMode.srcATop,
                                   ),
                                   child: child,
@@ -617,319 +587,99 @@ class _BattleScreenState extends State<BattleScreen>
                               ),
                             ),
                           ),
-                          // 몬스터 공격 이펙트 (플레이어 위에 표시)
-                          if (_showMonsterEffect)
-                            _AttackEffect(
-                              controller: _monsterAttackEffectCtrl,
-                              color: const Color(0xFFE53935),
-                              isDouble: _isDoubleAttack && _lastDamage != null,
-                            ),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(width: 12),
+                        const Text('VS',
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14)),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _HpBar(
+                            name: battle.monsterName,
+                            emoji: '👾',
+                            currentHp: _monsterHp,
+                            maxHp: battle.monsterHp,
+                            atk: battle.monsterAtk,
+                            def: battle.monsterDef,
+                            color: Colors.red,
+                            isMonster: true,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 12),
-                    const Text('VS',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14)),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _HpBar(
-                        name: battle.monsterName,
-                        emoji: '👾',
-                        currentHp: _monsterHp,
-                        maxHp: battle.monsterHp,
-                        atk: battle.monsterAtk,
-                        def: battle.monsterDef,
-                        color: Colors.red,
-                        isMonster: true,
-                      ),
+                  ),
+
+                  const Spacer(),
+
+                  // 배틀 메시지
+                  Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.symmetric(horizontal: 16),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.1)),
                     ),
-                  ],
-                ),
-              ),
-
-              // 몬스터 이미지
-              Expanded(
-                child: Center(
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      AnimatedBuilder(
-                        animation: Listenable.merge([
-                          _monsterShakeAnim,
-                          _monsterJumpAnim,
-                          _monsterDeathCtrl,
-                        ]),
-                        builder: (_, child) {
-                          final d = Curves.easeIn
-                              .transform(_monsterDeathCtrl.value);
-                          return Opacity(
-                            opacity: 1.0 - d,
-                            child: Transform.translate(
-                              offset: Offset(
-                                _monsterShakeAnim.value,
-                                _monsterJumpAnim.value + d * 30,
-                              ),
-                              child: Transform.scale(
-                                scale: 1.0 - d * 0.25,
-                                child: child,
-                              ),
-                            ),
-                          );
-                        },
-                        child: AnimatedBuilder(
-                          animation: _monsterFlashCtrl,
-                          builder: (_, child) => ColorFiltered(
-                            colorFilter: ColorFilter.mode(
-                              Colors.red.withOpacity(
-                                  _monsterFlashCtrl.value * 0.6),
-                              BlendMode.srcATop,
-                            ),
-                            child: child,
-                          ),
-                          child: _MonsterSprite(
-                            spriteFolder: _monsterSpriteFolder,
-                            totalFrames: _monsterTotalFrames,
-                            frameMs: _frameMs,
-                            isAttacking: _monsterIsAttacking,
-                          ),
-                        ),
-                      ),
-
-                      // 플레이어 공격 이펙트 (몬스터 위에 표시)
-                      if (_showPlayerEffect)
-                        _AttackEffect(
-                          controller: _playerAttackEffectCtrl,
-                          color: const Color(0xFF66D4FF),
-                          isDouble: _isDoubleAttack && _lastDamage != null,
-                        ),
-
-                      // 데미지 숫자
-                      if (_lastDamage != null)
-                        TweenAnimationBuilder<double>(
-                          key: ValueKey(_damageKey),
-                          tween: Tween(begin: 0.0, end: 1.0),
-                          duration: const Duration(milliseconds: 600),
-                          builder: (_, v, __) => Opacity(
-                            opacity: v < 0.6 ? 1.0 : (1.0 - v) / 0.4,
-                            child: Transform.translate(
-                              offset: Offset(
-                                _isDamageToPlayer ? -60 : 60,
-                                -60 * v,
-                              ),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 14, vertical: 7),
-                                decoration: BoxDecoration(
-                                  color: _isDamageToPlayer
-                                      ? Colors.red.shade700
-                                      : Colors.orange.shade700,
-                                  borderRadius: BorderRadius.circular(20),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: (_isDamageToPlayer
-                                          ? Colors.red
-                                          : Colors.orange)
-                                          .withOpacity(0.6),
-                                      blurRadius: 14,
-                                      spreadRadius: 1,
-                                    )
-                                  ],
-                                ),
-                                child: Text(
-                                  _isDoubleAttack
-                                      ? '💥 x2  $_lastDamage!'
-                                      : '-$_lastDamage',
-                                  style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 22),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-
-              // 배틀 메시지
-              Container(
-                width: double.infinity,
-                margin: const EdgeInsets.symmetric(horizontal: 16),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.5),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                      color: Colors.white.withOpacity(0.1)),
-                ),
-                child: Text(
-                  _battleMessage(),
-                  style: const TextStyle(
-                      color: Colors.white, fontSize: 15),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // 하단 버튼
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                child: _isFinished
-                    ? ElevatedButton(
-                  onPressed: _isConfirming ? null : _confirm,
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 52),
-                    backgroundColor: battle.result == 'WIN'
-                        ? Colors.amber
-                        : Colors.red,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: _isConfirming
-                      ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white))
-                      : Text(
-                      battle.result == 'WIN'
-                          ? '🎉 보상 받기'
-                          : '💀 결과 확인',
+                    child: Text(
+                      _battleMessage(),
                       style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold)),
-                )
-                    : OutlinedButton(
-                  onPressed: null,
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 52),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                          color: Colors.white, fontSize: 15),
+                      textAlign: TextAlign.center,
+                    ),
                   ),
-                  child: const Text('배틀 진행 중...',
-                      style: TextStyle(color: Colors.grey)),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
+                  const SizedBox(height: 16),
 
-// ── 몬스터 스프라이트 ──
-class _MonsterSprite extends StatefulWidget {
-  final String spriteFolder;
-  final int totalFrames;
-  final int frameMs;
-  final bool isAttacking;
-
-  const _MonsterSprite({
-    required this.spriteFolder,
-    required this.totalFrames,
-    required this.frameMs,
-    required this.isAttacking,
-  });
-
-  @override
-  State<_MonsterSprite> createState() => _MonsterSpriteState();
-}
-
-class _MonsterSpriteState extends State<_MonsterSprite> {
-  int _frame = 0;
-  Timer? _timer;
-
-  @override
-  void didUpdateWidget(_MonsterSprite oldWidget) {
-    super.didUpdateWidget(oldWidget);
-
-    if (widget.isAttacking && !oldWidget.isAttacking) {
-      _frame = 0;
-      _timer?.cancel();
-      _timer = Timer.periodic(
-          Duration(milliseconds: widget.frameMs), (_) {
-        if (!mounted) return;
-        setState(() {
-          if (_frame < widget.totalFrames - 1) {
-            _frame++; // 마지막 프레임에서 멈춤
-          }
-        });
-      });
-    } else if (!widget.isAttacking && oldWidget.isAttacking) {
-      _timer?.cancel();
-      _timer = null;
-      if (mounted) setState(() => _frame = 0); // frame_01 복귀
-    }
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 260,
-      height: 260,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          // 바닥 그림자
-          Positioned(
-            bottom: 0,
-            child: Container(
-              width: 140,
-              height: 14,
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(70),
+                  // 하단 버튼
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    child: _isFinished
+                        ? ElevatedButton(
+                      onPressed: _isConfirming ? null : _confirm,
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 52),
+                        backgroundColor: battle.result == 'WIN'
+                            ? Colors.amber
+                            : Colors.red,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: _isConfirming
+                          ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white))
+                          : Text(
+                          battle.result == 'WIN'
+                              ? '🎉 보상 받기'
+                              : '💀 결과 확인',
+                          style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold)),
+                    )
+                        : OutlinedButton(
+                      onPressed: null,
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 52),
+                        backgroundColor: Colors.black.withValues(alpha: 0.3),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: const Text('배틀 진행 중...',
+                          style: TextStyle(color: Colors.grey)),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
-          // IndexedStack — 25장 전부 올려두고 현재 프레임만 표시 (깜빡임 없음)
-          IndexedStack(
-            index: _frame,
-            children: List.generate(widget.totalFrames, (i) {
-              final frameNum = (i + 1).toString().padLeft(2, '0');
-              final path =
-                  '${widget.spriteFolder}frame_$frameNum-removebg-preview.png';
-              return Image.asset(
-                path,
-                width: 240,
-                height: 240,
-                fit: BoxFit.contain,
-                gaplessPlayback: true,
-                errorBuilder: (_, __, ___) => i == 0
-                    ? Container(
-                  width: 240,
-                  height: 240,
-                  decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                        color: Colors.green.withOpacity(0.3),
-                        width: 2),
-                  ),
-                  child: const Center(
-                    child:
-                    Text('👾', style: TextStyle(fontSize: 90)),
-                  ),
-                )
-                    : const SizedBox(width: 240, height: 240),
-              );
-            }),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1014,109 +764,6 @@ class _HpBar extends StatelessWidget {
               const TextStyle(color: Colors.grey, fontSize: 10)),
         ],
       ),
-    );
-  }
-}
-// ── 공격 이펙트 (플레이어/몬스터 공격 시 표시되는 임팩트) ──
-class _AttackEffect extends StatelessWidget {
-  final AnimationController controller;
-  final Color color;
-  final bool isDouble;
-
-  const _AttackEffect({
-    required this.controller,
-    required this.color,
-    required this.isDouble,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: controller,
-      builder: (_, __) {
-        final t = controller.value; // 0.0 ~ 1.0
-
-        // 타이밍: 확산 후 서서히 사라짐
-        final scale = 0.3 + (t * 1.2);
-        final opacity = (1.0 - t).clamp(0.0, 1.0);
-
-        return IgnorePointer(
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              // 원형 충격파
-              Transform.scale(
-                scale: scale,
-                child: Opacity(
-                  opacity: opacity,
-                  child: Container(
-                    width: 120,
-                    height: 120,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: color, width: 4),
-                    ),
-                  ),
-                ),
-              ),
-
-              // 십자 슬래시 라인
-              Opacity(
-                opacity: opacity,
-                child: Transform.rotate(
-                  angle: 0.4,
-                  child: Container(
-                    width: 140 * (0.5 + t * 0.6),
-                    height: 6,
-                    decoration: BoxDecoration(
-                      color: color,
-                      borderRadius: BorderRadius.circular(3),
-                      boxShadow: [
-                        BoxShadow(color: color.withOpacity(0.6), blurRadius: 8),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              Opacity(
-                opacity: opacity,
-                child: Transform.rotate(
-                  angle: -0.4,
-                  child: Container(
-                    width: 140 * (0.5 + t * 0.6),
-                    height: 6,
-                    decoration: BoxDecoration(
-                      color: color,
-                      borderRadius: BorderRadius.circular(3),
-                      boxShadow: [
-                        BoxShadow(color: color.withOpacity(0.6), blurRadius: 8),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-
-              // 스파크 파티클 (더블어택일 때 추가 강조)
-              if (isDouble)
-                Opacity(
-                  opacity: opacity,
-                  child: Transform.scale(
-                    scale: scale * 1.3,
-                    child: Container(
-                      width: 160,
-                      height: 160,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                            color: const Color(0xFFFFD700), width: 3),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        );
-      },
     );
   }
 }

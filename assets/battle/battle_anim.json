@@ -1,0 +1,243 @@
+{
+  "version": 1,
+  "stage": {
+    "width": 360,
+    "height": 640,
+    "origin": "center"
+  },
+  "views": {
+    "idle": {
+      "layers": {
+        "monster": {
+          "x": 0,
+          "y": 0,
+          "size": 240,
+          "rotation": 0,
+          "opacity": 1,
+          "frameMs": 80,
+          "sequence": "01:180 02:180 01:180 03:180",
+          "delayMs": 0,
+          "afterEnd": "loop",
+          "blend": "source-over",
+          "flipX": false
+        }
+      }
+    },
+    "player": {
+      "layers": {
+        "monster": {
+          "x": 0,
+          "y": 0,
+          "size": 240,
+          "rotation": 0,
+          "opacity": 1,
+          "frameMs": 80,
+          "sequence": "01:205 10:120 11:80 12:80 01:300",
+          "delayMs": 0,
+          "afterEnd": "hold",
+          "blend": "source-over",
+          "flipX": false
+        },
+        "slash": {
+          "x": 20,
+          "y": 10,
+          "size": 520,
+          "rotation": 0,
+          "opacity": 1,
+          "frameMs": 35,
+          "sequence": null,
+          "delayMs": 100,
+          "afterEnd": "hide",
+          "blend": "screen",
+          "flipX": false
+        }
+      },
+      "damage": {
+        "text": "-32",
+        "startMs": 215,
+        "durationMs": 750,
+        "x": 40,
+        "y": -110,
+        "fontSize": 64,
+        "rise": 70,
+        "popScale": 1.7,
+        "color": "#ffb02e",
+        "strokeColor": "#4a1c00"
+      },
+      "shake": {
+        "startMs": 205,
+        "durationMs": 220,
+        "power": 7
+      }
+    },
+    "monster": {
+      "layers": {
+        "monster": {
+          "x": 0,
+          "y": 0,
+          "size": 240,
+          "rotation": 0,
+          "opacity": 1,
+          "frameMs": 80,
+          "sequence": "04:80 05:120 06:180 07:100 08:80 09:80 01:300",
+          "delayMs": 0,
+          "afterEnd": "hold",
+          "blend": "source-over",
+          "flipX": false
+        },
+        "claw": {
+          "x": 0,
+          "y": 40,
+          "size": 600,
+          "rotation": 0,
+          "opacity": 1,
+          "frameMs": 40,
+          "sequence": null,
+          "delayMs": 200,
+          "afterEnd": "hide",
+          "blend": "screen",
+          "flipX": false
+        }
+      },
+      "damage": {
+        "text": "-12",
+        "startMs": 230,
+        "durationMs": 800,
+        "x": 0,
+        "y": 170,
+        "fontSize": 76,
+        "rise": 50,
+        "popScale": 1.8,
+        "color": "#ff4d5e",
+        "strokeColor": "#3a0010"
+      },
+      "shake": {
+        "startMs": 200,
+        "durationMs": 320,
+        "power": 14
+      },
+      "monsterLunge": {
+        "startMs": 110,
+        "durationMs": 360,
+        "maxScale": 1.35
+      },
+      "edgeFlash": {
+        "startMs": 200,
+        "durationMs": 500,
+        "strength": 0.75,
+        "color": "#ff1a2e"
+      }
+    }
+  },
+  "monsters": [
+    {
+      "key": "monster_pink_snake",
+      "name": "분홍 뱀",
+      "frames": 12
+    },
+    {
+      "key": "monster_leaf",
+      "name": "나뭇잎 몬스터",
+      "frames": 12
+    },
+    {
+      "key": "monster_flame_ghost",
+      "name": "불꽃 유령",
+      "frames": 12
+    },
+    {
+      "key": "monster_blue_flame",
+      "name": "파란 불꽃 몬스터",
+      "frames": 12
+    },
+    {
+      "key": "monster_witch_hat",
+      "name": "마법사 모자 몬스터",
+      "frames": 12
+    },
+    {
+      "key": "monster_flame_black",
+      "name": "불꽃 검은 몬스터",
+      "frames": 12
+    },
+    {
+      "key": "monster_black_blob",
+      "name": "검은 몬스터",
+      "frames": 12
+    },
+    {
+      "key": "monster_fire_blob",
+      "name": "불덩이 몬스터",
+      "frames": 12
+    }
+  ],
+  "slashEffects": [
+    {
+      "key": "fire_slash",
+      "name": "불꽃 베기",
+      "frames": 10
+    },
+    {
+      "key": "cross_slash",
+      "name": "십자 베기",
+      "frames": 10
+    },
+    {
+      "key": "impact",
+      "name": "주먹 충격",
+      "frames": 8
+    },
+    {
+      "key": "lightning",
+      "name": "번개",
+      "frames": 10
+    },
+    {
+      "key": "star_pop",
+      "name": "별 팡팡",
+      "frames": 10
+    },
+    {
+      "key": "magic_burst",
+      "name": "마법 폭발",
+      "frames": 12
+    }
+  ],
+  "clawEffects": [
+    {
+      "key": "claw",
+      "name": "발톱 3줄",
+      "frames": 8
+    },
+    {
+      "key": "bite",
+      "name": "물기",
+      "frames": 10
+    },
+    {
+      "key": "crack",
+      "name": "화면 금 가기",
+      "frames": 10
+    },
+    {
+      "key": "fire_breath",
+      "name": "불 뿜기",
+      "frames": 12
+    },
+    {
+      "key": "slam",
+      "name": "몸통 박치기",
+      "frames": 8
+    },
+    {
+      "key": "poison",
+      "name": "독 튀기기",
+      "frames": 10
+    }
+  ],
+  "defaults": {
+    "monster": "monster_pink_snake",
+    "slash": "fire_slash",
+    "claw": "claw"
+  }
+}

@@ -1,8 +1,13 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import '../../adventure/battle_anim/battle_preview_screen.dart';
 import '../provider/auth_provider.dart';
 import '../widgets/google_login_btn.dart';
+
+// 개발용 버튼 표시: 디버그 빌드, 또는 --dart-define=DEV_TOOLS=true 로 만든 빌드
+const bool _showDevTools = !kReleaseMode || bool.fromEnvironment('DEV_TOOLS');
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -118,6 +123,20 @@ class _LoginScreenState extends State<LoginScreen> {
                   alignment: Alignment.topCenter,
                 ),
               ),
+              // 개발용: 배틀 연출 미리보기 (로그인 없이)
+              if (_showDevTools)
+                Positioned(
+                  top: MediaQuery.of(context).padding.top + 8,
+                  left: 8,
+                  child: TextButton(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const BattlePreviewScreen()),
+                    ),
+                    style: TextButton.styleFrom(backgroundColor: Colors.black54),
+                    child: const Text('🛠 연출 미리보기',
+                        style: TextStyle(color: Colors.white, fontSize: 13)),
+                  ),
+                ),
               // 온보딩 다시보기 버튼
               Positioned(
                 top: MediaQuery.of(context).padding.top + 8,
