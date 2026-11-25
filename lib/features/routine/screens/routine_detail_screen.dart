@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/widgets/reorder_proxy.dart';
 import '../../../data/models/routine_model.dart';
 import '../../../data/repositories/routine_repository.dart';
 import 'exercise_pick_screen.dart';
@@ -372,7 +373,9 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
 
     return ListView.builder(
       key: const ValueKey('normal'),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      // 안드로이드 하단 버튼(내비게이션 바)에 마지막 운동이 가려지지 않게 그 높이만큼 더 띄움
+      padding: EdgeInsets.fromLTRB(
+          16, 12, 16, 12 + MediaQuery.of(context).viewPadding.bottom),
       itemCount: _rows.length,
       itemBuilder: (_, i) {
         final row = _rows[i];
@@ -407,7 +410,10 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
         _buildBanner(),
         Expanded(
           child: ReorderableListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            proxyDecorator: reorderProxyDecorator, // 끌 때 카드 뒤 흰 바탕 없애기
+            // 안드로이드 하단 버튼(내비게이션 바)에 마지막 운동이 가려지지 않게 그 높이만큼 더 띄움
+      padding: EdgeInsets.fromLTRB(
+          16, 12, 16, 12 + MediaQuery.of(context).viewPadding.bottom),
             buildDefaultDragHandles: false,
             itemCount: _rows.length,
             onReorder: (oldIndex, newIndex) {

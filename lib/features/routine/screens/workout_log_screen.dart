@@ -462,7 +462,7 @@ class _WorkoutLogScreenState extends State<WorkoutLogScreen>
                           Icon(Icons.circle,
                               size: 8, color: Colors.white.withOpacity(0.4)),
                           const SizedBox(width: 6),
-                          Text('저장하지 않은 기록이 있어요 (회색 숫자)',
+                          Text('저장하지 않은 기록이 있어요 (회색 칸)',
                               style: TextStyle(
                                   fontSize: 12,
                                   color: Colors.white.withOpacity(0.5))),
@@ -661,7 +661,7 @@ class _SetInput {
   final TextEditingController weightController = TextEditingController();
   final TextEditingController repsController = TextEditingController();
 
-  // 마지막으로 저장된 값 (다르면 칸 글씨를 회색으로)
+  // 마지막으로 저장된 값 (다르면 칸을 회색으로)
   String savedWeight = '';
   String savedReps = '';
 
@@ -764,7 +764,7 @@ class _SetGroupWidget extends StatelessWidget {
 
 class _Num extends StatelessWidget {
   final TextEditingController controller;
-  final String savedText; // 저장된 값과 다르면 회색 글씨
+  final String savedText; // 저장된 값과 다르면 칸을 회색으로
   final String hint;
   final VoidCallback onChanged;
   const _Num({
@@ -776,11 +776,17 @@ class _Num extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final unsaved = controller.text != savedText;
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF0D0A1A).withOpacity(0.8),
+        color: unsaved
+            ? const Color(0xFF5A5A5A) // 저장 안 됨 = 회색 칸
+            : const Color(0xFF0D0A1A).withOpacity(0.8),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF8B5E3C).withOpacity(0.4)),
+        border: Border.all(
+            color: unsaved
+                ? const Color(0xFF9E9E9E)
+                : const Color(0xFF8B5E3C).withOpacity(0.4)),
       ),
       child: TextField(
         controller: controller,
@@ -789,12 +795,8 @@ class _Num extends StatelessWidget {
         textAlign: TextAlign.center,
         textInputAction: TextInputAction.next,
         onChanged: (_) => onChanged(),
-        style: TextStyle(
-            color: controller.text == savedText
-                ? Colors.white
-                : Colors.white.withOpacity(0.4),
-            fontSize: 18,
-            fontWeight: FontWeight.bold),
+        style: const TextStyle(
+            color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
         onTap: () => controller.selection =
             TextSelection(baseOffset: 0, extentOffset: controller.text.length),
         decoration: InputDecoration(

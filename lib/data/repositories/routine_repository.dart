@@ -30,6 +30,13 @@ class RoutineRepository {
   Future<ExerciseModel> createCustomExercise(String name, String target) =>
       _remote.createCustomExercise(name, target);
 
+  Future<ExerciseModel> updateCustomExercise(
+          int exerciseId, String name, String target) =>
+      _remote.updateCustomExercise(exerciseId, name, target);
+
+  Future<void> deleteCustomExercise(int exerciseId) =>
+      _remote.deleteCustomExercise(exerciseId);
+
   Future<WorkoutSaveResult> saveWorkout(
       int routineExerciseId,
       List<Map<String, dynamic>> sets,

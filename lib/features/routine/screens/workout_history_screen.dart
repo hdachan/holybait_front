@@ -57,8 +57,8 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
           : RefreshIndicator(
         onRefresh: _load,
         child: ListView(
-          padding: const EdgeInsets.symmetric(
-              horizontal: 16, vertical: 8),
+          padding: EdgeInsets.fromLTRB(
+            16, 8, 16, 8 + MediaQuery.of(context).viewPadding.bottom), // 하단 내비게이션 바만큼 띄움
           children: [
             // 통계 카드
             if (_summary != null) _SummaryCard(summary: _summary!),

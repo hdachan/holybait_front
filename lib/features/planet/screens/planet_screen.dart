@@ -116,10 +116,10 @@ class _PlanetScreenState extends State<PlanetScreen> {
                           ],
                         ),
                         const SizedBox(height: 6),
-                        if (planet.interviewPersonName != null)
+                        // 행성 분위기 (DB planets.theme, 예: 새벽 / 산악). 비어 있으면 안 보임
+                        if ((planet.theme ?? '').trim().isNotEmpty)
                           Text(
-                            '${planet.interviewPersonName}'
-                                '${planet.interviewPersonJob != null ? ' · ${planet.interviewPersonJob}' : ''}',
+                            planet.theme!.trim(),
                             style: const TextStyle(color: Colors.white54, fontSize: 13),
                           ),
                         const SizedBox(height: 6),

@@ -43,8 +43,6 @@ class PlanetModel {
   final String? description;
   final String? imageKey;
   final String? theme;
-  final String? interviewPersonName;
-  final String? interviewPersonJob;
   final List<PlanetStageModel> stages;
 
   PlanetModel({
@@ -53,8 +51,6 @@ class PlanetModel {
     this.description,
     this.imageKey,
     this.theme,
-    this.interviewPersonName,
-    this.interviewPersonJob,
     required this.stages,
   });
 
@@ -64,8 +60,6 @@ class PlanetModel {
     description: json['description'],
     imageKey: json['imageKey'],
     theme: json['theme'],
-    interviewPersonName: json['interviewPersonName'],
-    interviewPersonJob: json['interviewPersonJob'],
     stages: (json['stages'] as List? ?? [])
         .map((e) => PlanetStageModel.fromJson(e))
         .toList(),

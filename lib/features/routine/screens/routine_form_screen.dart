@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/widgets/reorder_proxy.dart';
 import 'package:provider/provider.dart';
 import '../provider/routine_provider.dart';
 import '../../../data/models/routine_model.dart';
@@ -162,6 +163,7 @@ class _RoutineFormScreenState extends State<RoutineFormScreen> {
               ),
             )
                 : ReorderableListView.builder(
+            proxyDecorator: reorderProxyDecorator, // 끌 때 카드 뒤 흰 바탕 없애기
               padding: const EdgeInsets.symmetric(horizontal: 16),
               itemCount: provider.selectedExercises.length,
               onReorder: provider.reorderSelected,

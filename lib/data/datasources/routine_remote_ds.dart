@@ -64,6 +64,21 @@ class RoutineRemoteDataSource {
     return ExerciseModel.fromJson(res.data);
   }
 
+  // 내가 추가한 운동 이름·부위 수정
+  Future<ExerciseModel> updateCustomExercise(
+      int exerciseId, String name, String target) async {
+    final res = await _dio.put('/exercises/$exerciseId', data: {
+      'name': name,
+      'target': target,
+    });
+    return ExerciseModel.fromJson(res.data);
+  }
+
+  // 내가 추가한 운동 삭제 (서버는 숨기기 — 예전 기록·루틴은 그대로)
+  Future<void> deleteCustomExercise(int exerciseId) async {
+    await _dio.delete('/exercises/$exerciseId');
+  }
+
   Future<WorkoutSaveResult> saveWorkout(
       int routineExerciseId,
       List<Map<String, dynamic>> sets,

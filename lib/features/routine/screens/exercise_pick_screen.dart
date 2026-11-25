@@ -20,7 +20,11 @@ class ExercisePickScreen extends StatefulWidget {
 class _ExercisePickScreenState extends State<ExercisePickScreen> {
   final _searchController = TextEditingController();
   String? _selectedTarget;
-  final List<String> _targets = ['전체', '하체', '가슴', '등', '어깨', '팔'];
+  static const _myExercises = '내 운동';
+  final List<String> _targets = ['전체', '하체', '가슴', '등', '어깨', '팔', _myExercises];
+
+  // '내 운동' 칩: 내가 추가한 운동만 보기 (전체 목록을 받아 앱에서 거름)
+  bool get _myOnly => _selectedTarget == _myExercises;
 
   bool get _isStandaloneMode => widget.onComplete != null;
   final List<ExerciseModel> _localSelected = [];
@@ -46,8 +50,9 @@ class _ExercisePickScreenState extends State<ExercisePickScreen> {
 
   void _filterTarget(String? target) {
     setState(() => _selectedTarget = target == '전체' ? null : target);
-    context.read<RoutineProvider>().loadExercises(
-        target: target == '전체' ? null : target);
+    final serverTarget =
+        (target == '전체' || target == _myExercises) ? null : target;
+    context.read<RoutineProvider>().loadExercises(target: serverTarget);
   }
 
   bool _isSelected(ExerciseModel ex) {
@@ -87,6 +92,9 @@ class _ExercisePickScreenState extends State<ExercisePickScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<RoutineProvider>();
+    final exercises = _myOnly
+        ? provider.exercises.where((e) => e.isCustom).toList()
+        : provider.exercises;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -192,7 +200,7 @@ class _ExercisePickScreenState extends State<ExercisePickScreen> {
                             fontWeight: FontWeight.bold,
                             color: Colors.white.withOpacity(0.8))),
                     TextButton(
-                      onPressed: () => _showCustomAddDialog(context),
+                      onPressed: () => _showCustomDialog(context),
                       child: const Text('+ 직접 추가',
                           style: TextStyle(color: Color(0xFFF4A259))),
                     ),
@@ -200,13 +208,21 @@ class _ExercisePickScreenState extends State<ExercisePickScreen> {
                 ),
               ),
 
+              if (_myOnly && exercises.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 40),
+                  child: Text('아직 직접 추가한 운동이 없어요\n오른쪽 위 \'+ 직접 추가\'로 만들 수 있어요',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 13)),
+                ),
+
               // 운동 목록
               Expanded(
                 child: ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  itemCount: provider.exercises.length,
+                  itemCount: exercises.length,
                   itemBuilder: (_, i) {
-                    final ex = provider.exercises[i];
+                    final ex = exercises[i];
                     final isSelected = _isSelected(ex);
                     final isAlreadyAdded = widget.alreadyAdded.contains(ex.id);
 
@@ -257,13 +273,36 @@ class _ExercisePickScreenState extends State<ExercisePickScreen> {
                           ),
                         ),
                         subtitle: Text(
-                          ex.target,
+                          ex.isCustom ? '${ex.target} · 내 운동' : ex.target,
                           style: TextStyle(
                             color: Colors.white.withOpacity(0.4),
                             fontSize: 12,
                           ),
                         ),
-                        trailing: isAlreadyAdded
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // 내가 추가한 운동만 수정·삭제 메뉴
+                            if (ex.isCustom)
+                              PopupMenuButton<String>(
+                                icon: Icon(Icons.more_vert,
+                                    color: Colors.white.withOpacity(0.4), size: 20),
+                                color: const Color(0xFF1E1225),
+                                itemBuilder: (_) => const [
+                                  PopupMenuItem(
+                                      value: 'edit',
+                                      child: Text('수정',
+                                          style: TextStyle(color: Colors.white))),
+                                  PopupMenuItem(
+                                      value: 'delete',
+                                      child: Text('삭제',
+                                          style: TextStyle(color: Colors.redAccent))),
+                                ],
+                                onSelected: (v) => v == 'edit'
+                                    ? _showCustomDialog(context, editing: ex)
+                                    : _confirmDelete(ex),
+                              ),
+                            isAlreadyAdded
                             ? Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 10, vertical: 4),
@@ -283,6 +322,8 @@ class _ExercisePickScreenState extends State<ExercisePickScreen> {
                             color: Color(0xFFF4A259))
                             : Icon(Icons.add_circle_outline,
                             color: Colors.white.withOpacity(0.3)),
+                          ],
+                        ),
                         onTap: isAlreadyAdded
                             ? null
                             : () => setState(() => _toggle(ex)),
@@ -322,9 +363,50 @@ class _ExercisePickScreenState extends State<ExercisePickScreen> {
     );
   }
 
-  void _showCustomAddDialog(BuildContext context) {
-    final nameController = TextEditingController();
-    String selectedTarget = '하체';
+  // 내가 추가한 운동 삭제 확인 → 목록에서만 빠지고 예전 기록·루틴은 그대로
+  Future<void> _confirmDelete(ExerciseModel ex) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1225),
+        title: Text('\'${ex.name}\' 삭제',
+            style: const TextStyle(color: Colors.white, fontSize: 18)),
+        content: const Text('운동 목록에서 사라져요.\n이미 남긴 운동 기록과 루틴에 들어 있는 운동은 그대로 남아요.',
+            style: TextStyle(color: Colors.white70)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('취소', style: TextStyle(color: Colors.white54)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('삭제', style: TextStyle(color: Colors.redAccent)),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    final success =
+        await context.read<RoutineProvider>().deleteCustomExercise(ex.id);
+    if (!mounted) return;
+    if (success) {
+      setState(() => _localSelected.removeWhere((e) => e.id == ex.id));
+    }
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        content: Text(success ? '삭제했어요' : '삭제에 실패했어요. 잠시 후 다시 시도해주세요.'),
+        backgroundColor: success ? null : Colors.red,
+        duration: const Duration(seconds: 2),
+      ));
+  }
+
+  // 직접 추가 / 수정 겸용 (editing이 있으면 수정)
+  void _showCustomDialog(BuildContext context, {ExerciseModel? editing}) {
+    final isEdit = editing != null;
+    final nameController = TextEditingController(text: editing?.name ?? '');
+    String selectedTarget = editing?.target ?? '하체';
+    bool saving = false;
 
     showDialog(
       context: context,
@@ -348,13 +430,13 @@ class _ExercisePickScreenState extends State<ExercisePickScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('운동 추가',
-                          style: TextStyle(
+                      Text(isEdit ? '운동 수정' : '운동 추가',
+                          style: const TextStyle(
                               color: Colors.white,
                               fontSize: 20,
                               fontWeight: FontWeight.bold)),
                       const SizedBox(height: 4),
-                      Text('직접 운동을 입력해주세요',
+                      Text(isEdit ? '이름을 바꾸면 예전 기록에도 새 이름으로 보여요' : '직접 운동을 입력해주세요',
                           style: TextStyle(
                               color: const Color(0xFFF8C99F).withOpacity(0.5),
                               fontSize: 13)),
@@ -470,13 +552,34 @@ class _ExercisePickScreenState extends State<ExercisePickScreen> {
                       Expanded(
                         flex: 2,
                         child: ElevatedButton(
-                          onPressed: () async {
-                            if (nameController.text.trim().isEmpty) return;
-                            await context
-                                .read<RoutineProvider>()
-                                .addCustomExercise(
-                                nameController.text.trim(), selectedTarget);
-                            if (context.mounted) Navigator.pop(context);
+                          onPressed: saving
+                              ? null
+                              : () async {
+                            final name = nameController.text.trim();
+                            if (name.isEmpty) return;
+                            final provider = context.read<RoutineProvider>();
+                            if (!isEdit) {
+                              await provider.addCustomExercise(name, selectedTarget);
+                              if (context.mounted) Navigator.pop(context);
+                              return;
+                            }
+                            setState(() => saving = true);
+                            final updated = await provider.updateCustomExercise(
+                                editing.id, name, selectedTarget);
+                            if (!context.mounted) return;
+                            if (updated == null) {
+                              setState(() => saving = false);
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                                content: Text('수정에 실패했어요. 잠시 후 다시 시도해주세요.'),
+                                backgroundColor: Colors.red,
+                                duration: Duration(seconds: 2),
+                              ));
+                              return;
+                            }
+                            // 이 화면에서 골라 둔 운동도 새 이름으로
+                            final idx = _localSelected.indexWhere((e) => e.id == updated.id);
+                            if (idx >= 0) _localSelected[idx] = updated;
+                            Navigator.pop(context);
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFFEF7910),
@@ -486,8 +589,8 @@ class _ExercisePickScreenState extends State<ExercisePickScreen> {
                                 borderRadius: BorderRadius.circular(14)),
                             elevation: 0,
                           ),
-                          child: const Text('추가하기',
-                              style: TextStyle(
+                          child: Text(isEdit ? '수정하기' : '추가하기',
+                              style: const TextStyle(
                                   fontWeight: FontWeight.bold, fontSize: 15)),
                         ),
                       ),

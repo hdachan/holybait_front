@@ -61,8 +61,8 @@ class _WorkoutHistoryDetailScreenState
           child: Text('기록이 없습니다.',
               style: TextStyle(color: Colors.grey)))
           : ListView.builder(
-        padding: const EdgeInsets.symmetric(
-            horizontal: 16, vertical: 8),
+        padding: EdgeInsets.fromLTRB(
+            16, 8, 16, 8 + MediaQuery.of(context).viewPadding.bottom), // 하단 내비게이션 바만큼 띄움
         itemCount: _records.length,
         itemBuilder: (_, i) =>
             _RecordCard(record: _records[i]),

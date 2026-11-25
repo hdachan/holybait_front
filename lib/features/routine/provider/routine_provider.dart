@@ -149,4 +149,35 @@ class RoutineProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  // 내가 추가한 운동 수정 → 목록·선택한 운동에도 바로 반영. 성공하면 수정된 운동
+  Future<ExerciseModel?> updateCustomExercise(
+      int exerciseId, String name, String target) async {
+    try {
+      final updated =
+          await _repository.updateCustomExercise(exerciseId, name, target);
+      _exercises = [
+        for (final e in _exercises) e.id == exerciseId ? updated : e
+      ];
+      _selectedExercises = [
+        for (final e in _selectedExercises) e.id == exerciseId ? updated : e
+      ];
+      notifyListeners();
+      return updated;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // 내가 추가한 운동 삭제(숨기기) → 운동 목록에서 빠짐. 성공하면 true
+  Future<bool> deleteCustomExercise(int exerciseId) async {
+    try {
+      await _repository.deleteCustomExercise(exerciseId);
+      _exercises = _exercises.where((e) => e.id != exerciseId).toList();
+      notifyListeners();
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
 }
