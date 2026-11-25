@@ -103,6 +103,7 @@ class BattleStartResult {
   final int monsterDef;
   final String? monsterImageKey;
   final String? monsterAttackEffect; // 몬스터 공격 이펙트 이름 (null = 앱 기본 발톱 3줄)
+  final String? playerAttackEffect; // 내 공격 이펙트 = 가방에서 착용한 것 (null = 앱 기본 불꽃 베기)
   final int playerMaxHp;
   final int playerAtk;
   final int playerDef;
@@ -113,6 +114,7 @@ class BattleStartResult {
     required this.monsterName, required this.monsterLevel,
     required this.monsterHp, required this.monsterAtk,
     required this.monsterDef, this.monsterImageKey, this.monsterAttackEffect,
+    this.playerAttackEffect,
     required this.playerMaxHp, required this.playerAtk,
     required this.playerDef, required this.logs,
   });
@@ -126,6 +128,7 @@ class BattleStartResult {
         monsterHp: json['monsterHp'], monsterAtk: json['monsterAtk'],
         monsterDef: json['monsterDef'], monsterImageKey: json['monsterImageKey'],
         monsterAttackEffect: json['monsterAttackEffect'],
+        playerAttackEffect: json['playerAttackEffect'],
         playerMaxHp: json['playerMaxHp'], playerAtk: json['playerAtk'],
         playerDef: json['playerDef'],
         logs: (json['logs'] as List).map((e) => TurnLog.fromJson(e)).toList(),

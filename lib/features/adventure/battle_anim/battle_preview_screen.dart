@@ -73,7 +73,7 @@ class _BattlePreviewScreenState extends State<BattlePreviewScreen> {
     setState(() => _frames = {'monster': results[0], 'slash': results[1], 'claw': results[2]});
   }
 
-  /// 실제 배틀 화면을 가짜 기록으로 열기 (서버 요청 없음). 몬스터 공격은 고른 이펙트, 내 공격은 불꽃 베기
+  /// 실제 배틀 화면을 가짜 기록으로 열기 (서버 요청 없음). 내 공격·몬스터 공격 모두 고른 이펙트
   void _openMockBattle() {
     final name = _find(_config!.monsters, _monster)?.name ?? '몬스터';
     TurnLog log(int turn, bool player, int dmg, int php, int mhp, {bool x2 = false}) => TurnLog(
@@ -96,6 +96,7 @@ class _BattlePreviewScreenState extends State<BattlePreviewScreen> {
           monsterDef: 3,
           monsterImageKey: _monster,
           monsterAttackEffect: _claw, // 고른 몬스터 공격 이펙트로
+          playerAttackEffect: _slash, // 고른 내 공격 이펙트로
           playerMaxHp: 80,
           playerAtk: 32,
           playerDef: 5,

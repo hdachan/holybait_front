@@ -9,6 +9,7 @@ import '../../../core/network/api_client.dart';
 import '../../shop/screens/shop_screen.dart';
 import '../../../core/widgets/currency_badge.dart';
 import '../../../core/widgets/visible_frame_timer.dart';
+import '../../bag/screens/bag_screen.dart';
 import '../../quest/screens/quest_sheet.dart';
 import '../../quest/provider/quest_provider.dart';
 
@@ -216,6 +217,36 @@ class _CharacterScreenState extends State<CharacterScreen> {
                           ),
                         ),
 
+                        // ── 가방 버튼 (퀘스트 버튼 위) ──
+                        Positioned(
+                          right: 12,
+                          top: height * 0.42 - 60,
+                          child: GestureDetector(
+                            onTap: () => Navigator.of(context).push(
+                                MaterialPageRoute(builder: (_) => const BagScreen())),
+                            child: Container(
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF1C0E04).withOpacity(0.85),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                    color: const Color(0xFFEF7910), width: 1.5),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFFEF7910).withOpacity(0.35),
+                                    blurRadius: 10,
+                                  ),
+                                ],
+                              ),
+                              child: const Center(
+                                child: Icon(Icons.backpack_rounded,
+                                    color: Color(0xFFEF7910), size: 26),
+                              ),
+                            ),
+                          ),
+                        ),
+
                         // ── 퀘스트 버튼 (우측) ──
                         Positioned(
                           right: 12,
@@ -235,16 +266,17 @@ class _CharacterScreenState extends State<CharacterScreen> {
                                         color: const Color(0xFF1C0E04).withOpacity(0.85),
                                         shape: BoxShape.circle,
                                         border: Border.all(
-                                            color: const Color(0xFFEF7910).withOpacity(0.6)),
+                                            color: const Color(0xFFEF7910), width: 1.5),
                                         boxShadow: [
                                           BoxShadow(
-                                            color: const Color(0xFFEF7910).withOpacity(0.2),
-                                            blurRadius: 8,
+                                            color: const Color(0xFFEF7910).withOpacity(0.35),
+                                            blurRadius: 10,
                                           ),
                                         ],
                                       ),
                                       child: const Center(
-                                        child: Text('📜', style: TextStyle(fontSize: 22)),
+                                        child: Icon(Icons.assignment_rounded,
+                                            color: Color(0xFFEF7910), size: 26),
                                       ),
                                     ),
                                     if (hasClaimable)
@@ -630,18 +662,21 @@ class _EquipButtonState extends State<_EquipButton> {
             width: 120,
             height: 30,
           ),
-          const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.check_circle_outline,
-                  size: 14, color: Color(0xFF4CAF50)),
-              SizedBox(width: 6),
-              Text('착용 중',
-                  style: TextStyle(
-                      color: Color(0xFF4CAF50),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13)),
-            ],
+          const Padding(
+            padding: EdgeInsets.only(left: 24), // 버튼 그림 왼쪽 아이콘 비키기
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.check_circle_outline,
+                    size: 14, color: Color(0xFF4CAF50)),
+                SizedBox(width: 6),
+                Text('착용 중',
+                    style: TextStyle(
+                        color: Color(0xFF4CAF50),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13)),
+              ],
+            ),
           ),
         ],
       );
@@ -666,12 +701,16 @@ class _EquipButtonState extends State<_EquipButton> {
               width: 120,
               height: 30,
             ),
-            const Text(
-              '착용하기',
-              style: TextStyle(
-                color: Color(0xFF3E2723),
-                fontWeight: FontWeight.bold,
-                fontSize: 15,
+            // 버튼 그림 왼쪽에 동그란 아이콘이 있어서 글씨를 오른쪽으로 비켜 둠
+            const Padding(
+              padding: EdgeInsets.only(left: 24),
+              child: Text(
+                '착용하기',
+                style: TextStyle(
+                  color: Color(0xFF3E2723),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
               ),
             ),
           ],

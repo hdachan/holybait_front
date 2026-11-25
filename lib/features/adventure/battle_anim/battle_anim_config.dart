@@ -48,6 +48,14 @@ class BattleAnimConfig {
     return monsters.isEmpty ? null : monsters.first;
   }
 
+  /// 내 공격 이펙트 목록에 있는 이름일 때만 (없으면 null)
+  BattleAnimAsset? slashEffect(String? key) {
+    for (final e in slashEffects) {
+      if (e.key == key) return e;
+    }
+    return null;
+  }
+
   /// 몬스터 공격 이펙트 목록에 있는 이름일 때만 (없으면 null)
   BattleAnimAsset? clawEffect(String? key) {
     for (final e in clawEffects) {

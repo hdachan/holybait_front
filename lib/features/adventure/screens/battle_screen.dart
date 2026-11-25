@@ -22,7 +22,7 @@ class BattleScreen extends StatefulWidget {
 class _BattleScreenState extends State<BattleScreen>
     with TickerProviderStateMixin {
 
-  // 내 공격 이펙트 (4단계에서 유저가 장착한 이펙트로 바뀜)
+  // 내 공격 이펙트: 서버가 준 가방 착용 이펙트, 없거나 모르는 이름이면 불꽃 베기
   static const _playerEffectKey = 'fire_slash'; // 불꽃 베기
   // 몬스터 공격 이펙트: 서버가 준 몬스터별 값, 없거나 모르는 이름이면 발톱 3줄
   static const _defaultMonsterEffectKey = 'claw';
@@ -75,7 +75,8 @@ class _BattleScreenState extends State<BattleScreen>
     try {
       final config = await BattleAnimConfig.load();
       final monster = config.resolveMonster(widget.battleResult.monsterImageKey);
-      final slash = config.effect(_playerEffectKey);
+      final slash = config.slashEffect(widget.battleResult.playerAttackEffect) ??
+          config.effect(_playerEffectKey);
       final claw = config.clawEffect(widget.battleResult.monsterAttackEffect) ??
           config.effect(_defaultMonsterEffectKey);
       Future<List<ui.Image>> effect(BattleAnimAsset? e) => e == null

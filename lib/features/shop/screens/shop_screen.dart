@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../core/network/api_client.dart';
 import '../../currency/provider/currency_provider.dart';
 import '../../adventure/provider/adventure_provider.dart';
+import '../widgets/effect_shop_section.dart';
 
 class ShopScreen extends StatelessWidget {
   const ShopScreen({super.key});
@@ -36,7 +37,7 @@ class ShopScreen extends StatelessWidget {
           ),
           Container(color: Colors.black.withOpacity(0.35)),
           SafeArea(
-            child: Padding(
+            child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
               child: Column(
                 children: [
@@ -115,6 +116,11 @@ class ShopScreen extends StatelessWidget {
                       ],
                     ),
                   ),
+
+                  const SizedBox(height: 24),
+
+                  // 공격 이펙트 (인앱결제) — 아직 없는 것만
+                  const EffectShopSection(),
                 ],
               ),
             ),
