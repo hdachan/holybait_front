@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -35,6 +37,9 @@ class _WorkoutLogScreenState extends State<WorkoutLogScreen>
   bool _isSaving = false;
   bool _isLoaded = false;
 
+  // 저장된 상태(불러온 직후·저장 직후)의 기록 모양. 지금 입력과 다르면 "저장 안 됨"
+  String? _savedSignature;
+
   late AnimationController _coinAnim;
   late Animation<double> _coinFade;
   late Animation<Offset> _coinSlide;
@@ -53,12 +58,10 @@ class _WorkoutLogScreenState extends State<WorkoutLogScreen>
 
     _coinAnim = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 1200));
-    _coinFade = Tween<double>(begin: 1, end: 0).animate(
-        CurvedAnimation(parent: _coinAnim, curve: Curves.easeOut));
-    _coinSlide =
-        Tween<Offset>(begin: Offset.zero, end: const Offset(0, -1.5))
-            .animate(CurvedAnimation(
-            parent: _coinAnim, curve: Curves.easeOut));
+    _coinFade = Tween<double>(begin: 1, end: 0)
+        .animate(CurvedAnimation(parent: _coinAnim, curve: Curves.easeOut));
+    _coinSlide = Tween<Offset>(begin: Offset.zero, end: const Offset(0, -1.5))
+        .animate(CurvedAnimation(parent: _coinAnim, curve: Curves.easeOut));
 
     _loadAll();
   }
@@ -74,16 +77,77 @@ class _WorkoutLogScreenState extends State<WorkoutLogScreen>
     for (int i = 0; i < widget.exercises.length; i++) {
       await _loadSets(i);
     }
-    if (mounted) setState(() => _isLoaded = true);
+    if (!mounted) return;
+    setState(() {
+      _isLoaded = true;
+      _markAllSaved();
+    });
+  }
+
+  // 저장될 내용(빈 세트 제외)을 글자로 — 비교용
+  String _signature() =>
+      jsonEncode([for (final groups in _allSets) _buildPayload(groups)]);
+
+  bool get _isDirty =>
+      _isLoaded && _savedSignature != null && _signature() != _savedSignature;
+
+  // 지금 입력을 "저장됨"으로 표시 (칸 글씨가 흰색으로)
+  void _markAllSaved() {
+    _savedSignature = _signature();
+    for (final groups in _allSets) {
+      for (final g in groups) {
+        g.main.markSaved();
+        for (final d in g.dropsets) {
+          d.markSaved();
+        }
+      }
+    }
+  }
+
+  // 저장 안 하고 나가려 할 때
+  Future<void> _confirmLeave() async {
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1C0E04),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('저장하지 않은 기록이 있어요',
+            style: TextStyle(color: Colors.white, fontSize: 18)),
+        content: const Text('저장하지 않고 나가면 입력한 기록이 사라져요.',
+            style: TextStyle(color: Colors.white70)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, 'discard'),
+            child:
+                const Text('저장 안 함', style: TextStyle(color: Colors.white54)),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFFF4A259),
+                foregroundColor: Colors.black),
+            onPressed: () => Navigator.pop(ctx, 'save'),
+            child: const Text('저장하고 나가기'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || choice == null) return; // 바깥을 누르면 그대로 계속 작성
+    if (choice == 'discard') {
+      setState(() => _savedSignature = _signature()); // 나가기 허용
+      Navigator.pop(context);
+    } else if (await _save()) {
+      if (mounted) Navigator.pop(context);
+    }
   }
 
   Future<void> _loadSets(int index) async {
     try {
       final response =
-      await _repository.getRecentSets(widget.exercises[index].id);
+          await _repository.getRecentSets(widget.exercises[index].id);
 
       if (response == null) {
-        if (mounted) setState(() => _allSets[index] = [_SetGroup(setNumber: 1)]);
+        if (mounted)
+          setState(() => _allSets[index] = [_SetGroup(setNumber: 1)]);
         return;
       }
 
@@ -192,7 +256,8 @@ class _WorkoutLogScreenState extends State<WorkoutLogScreen>
     return result;
   }
 
-  Future<void> _save() async {
+  /// 성공하면 true
+  Future<bool> _save() async {
     setState(() => _isSaving = true);
     int totalGranted = 0;
     bool hasError = false;
@@ -212,8 +277,11 @@ class _WorkoutLogScreenState extends State<WorkoutLogScreen>
       }
     }
 
-    if (!mounted) return;
-    setState(() => _isSaving = false);
+    if (!mounted) return false;
+    setState(() {
+      _isSaving = false;
+      if (!hasError) _markAllSaved();
+    });
 
     if (hasError) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -227,7 +295,7 @@ class _WorkoutLogScreenState extends State<WorkoutLogScreen>
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       ));
-      return;
+      return false;
     }
 
     context.read<CurrencyProvider>().load();
@@ -241,164 +309,190 @@ class _WorkoutLogScreenState extends State<WorkoutLogScreen>
       content: Row(children: [
         const Icon(Icons.check_circle_outline, color: Colors.white, size: 18),
         const SizedBox(width: 8),
-        Text(totalGranted > 0
-            ? '저장되었습니다.  👟 +$totalGranted'
-            : '저장되었습니다.'),
+        Text(totalGranted > 0 ? '저장되었습니다.  👟 +$totalGranted' : '저장되었습니다.'),
       ]),
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       duration: const Duration(seconds: 2),
     ));
+    return true;
   }
 
   @override
   Widget build(BuildContext context) {
     final currency = context.watch<CurrencyProvider>();
+    final dirty = _isDirty;
 
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF160d1f),
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: widget.isSuperset
-            ? Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF4A259).withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: const Text('SS',
-                    style: TextStyle(
-                        fontSize: 11,
-                        color: Color(0xFFF4A259),
-                        fontWeight: FontWeight.bold)),
-              ),
-              const SizedBox(width: 6),
-              const Text('슈퍼세트',
-                  style: TextStyle(
-                      fontSize: 14, color: Color(0xFFF4A259))),
-            ]),
-            Text(
-              widget.exercises.map((e) => e.exerciseName).join(' + '),
-              style: const TextStyle(fontSize: 13, color: Colors.white),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        )
-            : Text(widget.exercises.first.exerciseName,
-            style: const TextStyle(color: Colors.white)),
-        actions: [
-          _CoinCapBadge(currency: currency),
-          const SizedBox(width: 8),
-        ],
-        bottom: widget.isSuperset
-            ? TabBar(
-          controller: _tabController,
-          isScrollable: widget.exercises.length > 3,
-          indicatorColor: const Color(0xFFF4A259),
-          labelColor: const Color(0xFFF4A259),
-          unselectedLabelColor: Colors.white38,
-          tabs: widget.exercises
-              .map((e) => Tab(text: e.exerciseName))
-              .toList(),
-        )
-            : null,
-      ),
-      body: Stack(
-        children: [
-          !_isLoaded
-              ? const Center(
-              child: CircularProgressIndicator(color: Colors.white))
-              : widget.isSuperset
-              ? TabBarView(
-            controller: _tabController,
-            children: List.generate(
-                widget.exercises.length,
-                    (i) => _buildEditor(i)),
-          )
-              : _buildEditor(0),
-
-          // 코인 획득 애니메이션
-          if (_lastGranted > 0)
-            Positioned(
-              top: 60,
-              right: 20,
-              child: AnimatedBuilder(
-                animation: _coinAnim,
-                builder: (_, __) => FadeTransition(
-                  opacity: _coinFade,
-                  child: SlideTransition(
-                    position: _coinSlide,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF4A259),
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFFF4A259).withOpacity(0.4),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          )
-                        ],
+    return PopScope(
+      canPop: !dirty,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _confirmLeave();
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        appBar: AppBar(
+          backgroundColor: const Color(0xFF160d1f),
+          elevation: 0,
+          iconTheme: const IconThemeData(color: Colors.white),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => Navigator.maybePop(context),
+          ),
+          title: widget.isSuperset
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF4A259).withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Text('SS',
+                            style: TextStyle(
+                                fontSize: 11,
+                                color: Color(0xFFF4A259),
+                                fontWeight: FontWeight.bold)),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text('👟', style: TextStyle(fontSize: 16)),
-                          const SizedBox(width: 4),
-                          Text('+$_lastGranted',
-                              style: const TextStyle(
-                                  color: Colors.black,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16)),
-                        ],
+                      const SizedBox(width: 6),
+                      const Text('슈퍼세트',
+                          style: TextStyle(
+                              fontSize: 14, color: Color(0xFFF4A259))),
+                    ]),
+                    Text(
+                      widget.exercises.map((e) => e.exerciseName).join(' + '),
+                      style: const TextStyle(fontSize: 13, color: Colors.white),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                )
+              : Text(widget.exercises.first.exerciseName,
+                  style: const TextStyle(color: Colors.white)),
+          actions: [
+            _CoinCapBadge(currency: currency),
+            const SizedBox(width: 8),
+          ],
+          bottom: widget.isSuperset
+              ? TabBar(
+                  controller: _tabController,
+                  isScrollable: widget.exercises.length > 3,
+                  indicatorColor: const Color(0xFFF4A259),
+                  labelColor: const Color(0xFFF4A259),
+                  unselectedLabelColor: Colors.white38,
+                  tabs: widget.exercises
+                      .map((e) => Tab(text: e.exerciseName))
+                      .toList(),
+                )
+              : null,
+        ),
+        body: Stack(
+          children: [
+            !_isLoaded
+                ? const Center(
+                    child: CircularProgressIndicator(color: Colors.white))
+                : widget.isSuperset
+                    ? TabBarView(
+                        controller: _tabController,
+                        children: List.generate(
+                            widget.exercises.length, (i) => _buildEditor(i)),
+                      )
+                    : _buildEditor(0),
+
+            // 코인 획득 애니메이션
+            if (_lastGranted > 0)
+              Positioned(
+                top: 60,
+                right: 20,
+                child: AnimatedBuilder(
+                  animation: _coinAnim,
+                  builder: (_, __) => FadeTransition(
+                    opacity: _coinFade,
+                    child: SlideTransition(
+                      position: _coinSlide,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF4A259),
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFF4A259).withOpacity(0.4),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            )
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text('👟', style: TextStyle(fontSize: 16)),
+                            const SizedBox(width: 4),
+                            Text('+$_lastGranted',
+                                style: const TextStyle(
+                                    color: Colors.black,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16)),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
-        ],
-      ),
-      bottomNavigationBar: Container(
-        color: const Color(0xFF160d1f),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: ElevatedButton(
-              onPressed: _isSaving ? null : _save,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFF4A259),
-                foregroundColor: Colors.black,
-                disabledBackgroundColor: Colors.white.withOpacity(0.1),
-                minimumSize: const Size(double.infinity, 52),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-                elevation: 0,
-              ),
-              child: _isSaving
-                  ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                      strokeWidth: 2, color: Colors.black))
-                  : Text(
-                widget.isSuperset ? '슈퍼세트 저장하기' : '저장하기',
-                style: const TextStyle(
-                    fontSize: 16, fontWeight: FontWeight.bold),
+          ],
+        ),
+        bottomNavigationBar: Container(
+          color: const Color(0xFF160d1f),
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (dirty)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.circle,
+                              size: 8, color: Colors.white.withOpacity(0.4)),
+                          const SizedBox(width: 6),
+                          Text('저장하지 않은 기록이 있어요 (회색 숫자)',
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.white.withOpacity(0.5))),
+                        ],
+                      ),
+                    ),
+                  ElevatedButton(
+                    onPressed: _isSaving ? null : _save,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFF4A259),
+                      foregroundColor: Colors.black,
+                      disabledBackgroundColor: Colors.white.withOpacity(0.1),
+                      minimumSize: const Size(double.infinity, 52),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      elevation: 0,
+                    ),
+                    child: _isSaving
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.black))
+                        : Text(
+                            widget.isSuperset ? '슈퍼세트 저장하기' : '저장하기',
+                            style: const TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -444,11 +538,12 @@ class _WorkoutLogScreenState extends State<WorkoutLogScreen>
           ]),
         ),
         ...groups.asMap().entries.map((e) => _SetGroupWidget(
-          group: e.value,
-          onRemoveSet: () => _removeSet(index, e.key),
-          onAddDropset: () => _addDropset(index, e.key),
-          onRemoveDropset: (di) => _removeDropset(index, e.key, di),
-        )),
+              group: e.value,
+              onRemoveSet: () => _removeSet(index, e.key),
+              onAddDropset: () => _addDropset(index, e.key),
+              onRemoveDropset: (di) => _removeDropset(index, e.key, di),
+              onChanged: () => setState(() {}), // 저장 안 됨 표시 갱신
+            )),
         const SizedBox(height: 8),
         SizedBox(
           width: double.infinity,
@@ -458,9 +553,11 @@ class _WorkoutLogScreenState extends State<WorkoutLogScreen>
               foregroundColor: const Color(0xFFF4A259),
               side: const BorderSide(color: Color(0xFFF4A259), width: 1.5),
               padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
             ),
-            child: const Text('+ 세트 추가', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+            child: const Text('+ 세트 추가',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
           ),
         ),
 
@@ -487,25 +584,23 @@ class _WorkoutLogScreenState extends State<WorkoutLogScreen>
           ...recent.asMap().entries.map((entry) {
             final s = entry.value;
             return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  s.isDropset ? '  └ DROP' : '${recentNumbers[entry.key]}세트',
-                  style: TextStyle(
-                    color: s.isDropset
-                        ? const Color(0xFFF4A259)
-                        : Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text('${s.weightKg}KG · ${s.reps}회',
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    s.isDropset ? '  └ DROP' : '${recentNumbers[entry.key]}세트',
                     style: TextStyle(
-                        color: Colors.white.withOpacity(0.4))),
-              ],
-            ),
-          );
+                      color:
+                          s.isDropset ? const Color(0xFFF4A259) : Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text('${s.weightKg}KG · ${s.reps}회',
+                      style: TextStyle(color: Colors.white.withOpacity(0.4))),
+                ],
+              ),
+            );
           }),
         const SizedBox(height: 80),
       ],
@@ -565,6 +660,15 @@ class _SetGroup {
 class _SetInput {
   final TextEditingController weightController = TextEditingController();
   final TextEditingController repsController = TextEditingController();
+
+  // 마지막으로 저장된 값 (다르면 칸 글씨를 회색으로)
+  String savedWeight = '';
+  String savedReps = '';
+
+  void markSaved() {
+    savedWeight = weightController.text;
+    savedReps = repsController.text;
+  }
 }
 
 class _SetGroupWidget extends StatelessWidget {
@@ -572,12 +676,14 @@ class _SetGroupWidget extends StatelessWidget {
   final VoidCallback onRemoveSet;
   final VoidCallback onAddDropset;
   final void Function(int) onRemoveDropset;
+  final VoidCallback onChanged;
 
   const _SetGroupWidget({
     required this.group,
     required this.onRemoveSet,
     required this.onAddDropset,
     required this.onRemoveDropset,
+    required this.onChanged,
   });
 
   @override
@@ -586,17 +692,16 @@ class _SetGroupWidget extends StatelessWidget {
       children: [
         _row('${group.setNumber}', group.main, false, onRemoveSet),
         ...group.dropsets.asMap().entries.map((e) => Padding(
-          padding: const EdgeInsets.only(left: 16, top: 4),
-          child: _row('DROP', e.value, true, () => onRemoveDropset(e.key)),
-        )),
+              padding: const EdgeInsets.only(left: 16, top: 4),
+              child: _row('DROP', e.value, true, () => onRemoveDropset(e.key)),
+            )),
         Align(
           alignment: Alignment.centerLeft,
           child: TextButton(
             onPressed: onAddDropset,
             child: Text('↳ 드롭세트 추가',
                 style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.white.withOpacity(0.3))),
+                    fontSize: 13, color: Colors.white.withOpacity(0.3))),
           ),
         ),
         Divider(color: Colors.white.withOpacity(0.08)),
@@ -604,7 +709,8 @@ class _SetGroupWidget extends StatelessWidget {
     );
   }
 
-  Widget _row(String label, _SetInput input, bool isDrop, VoidCallback onRemove) {
+  Widget _row(
+      String label, _SetInput input, bool isDrop, VoidCallback onRemove) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
@@ -613,25 +719,35 @@ class _SetGroupWidget extends StatelessWidget {
             width: 56,
             child: isDrop
                 ? Container(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 6, vertical: 3),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF4A259).withOpacity(0.2),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: const Text('DROP',
-                  style: TextStyle(
-                      fontSize: 11,
-                      color: Color(0xFFF4A259),
-                      fontWeight: FontWeight.bold)),
-            )
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF4A259).withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text('DROP',
+                        style: TextStyle(
+                            fontSize: 11,
+                            color: Color(0xFFF4A259),
+                            fontWeight: FontWeight.bold)),
+                  )
                 : Text(label,
-                style: const TextStyle(
-                    fontWeight: FontWeight.bold, color: Colors.white)),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, color: Colors.white)),
           ),
-          Expanded(child: _Num(controller: input.weightController, hint: '20')),
+          Expanded(
+              child: _Num(
+                  controller: input.weightController,
+                  savedText: input.savedWeight,
+                  hint: '20',
+                  onChanged: onChanged)),
           const SizedBox(width: 8),
-          Expanded(child: _Num(controller: input.repsController, hint: '10')),
+          Expanded(
+              child: _Num(
+                  controller: input.repsController,
+                  savedText: input.savedReps,
+                  hint: '10',
+                  onChanged: onChanged)),
           IconButton(
             icon: Icon(Icons.cancel_outlined,
                 color: isDrop
@@ -648,8 +764,15 @@ class _SetGroupWidget extends StatelessWidget {
 
 class _Num extends StatelessWidget {
   final TextEditingController controller;
+  final String savedText; // 저장된 값과 다르면 회색 글씨
   final String hint;
-  const _Num({required this.controller, required this.hint});
+  final VoidCallback onChanged;
+  const _Num({
+    required this.controller,
+    required this.savedText,
+    required this.hint,
+    required this.onChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -665,12 +788,19 @@ class _Num extends StatelessWidget {
         inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[\d.]'))],
         textAlign: TextAlign.center,
         textInputAction: TextInputAction.next,
-        style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-        onTap: () => controller.selection = TextSelection(
-            baseOffset: 0, extentOffset: controller.text.length),
+        onChanged: (_) => onChanged(),
+        style: TextStyle(
+            color: controller.text == savedText
+                ? Colors.white
+                : Colors.white.withOpacity(0.4),
+            fontSize: 18,
+            fontWeight: FontWeight.bold),
+        onTap: () => controller.selection =
+            TextSelection(baseOffset: 0, extentOffset: controller.text.length),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: TextStyle(color: Colors.white.withOpacity(0.2), fontSize: 18),
+          hintStyle:
+              TextStyle(color: Colors.white.withOpacity(0.2), fontSize: 18),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(vertical: 14),
           focusedBorder: InputBorder.none,

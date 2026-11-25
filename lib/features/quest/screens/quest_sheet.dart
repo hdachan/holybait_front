@@ -72,7 +72,8 @@ class _QuestSheetState extends State<_QuestSheet> {
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
             child: Row(
               children: [
-                const Text('📜', style: TextStyle(fontSize: 22)),
+                const Icon(Icons.assignment_rounded,
+                    color: Color(0xFFEF7910), size: 24),
                 const SizedBox(width: 8),
                 Text(_titleFor(_selectedType),
                     style: TextStyle(
@@ -148,6 +149,8 @@ class _QuestSheetState extends State<_QuestSheet> {
                   _QuestItem(quest: quest.quests[i], type: _selectedType),
             ),
           ),
+          // 안드로이드 하단 버튼(내비게이션 바)과 겹치지 않게 그 높이만큼 비움
+          SizedBox(height: MediaQuery.of(context).viewPadding.bottom),
         ],
       ),
     );
